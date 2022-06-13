@@ -307,6 +307,8 @@ carbCapOandMfact = Dict(
                     1 => 1.17001519, # igcc
                     2 => 2.069083447
                     )
+
+
 function retFitBasedCoef(baseKind, kind, time)
   multiplier = 1.
   baseFuel = baseKind
@@ -327,14 +329,16 @@ function retFitBasedCoef(baseKind, kind, time)
   end
   return mutiplier, baseFuel
 end
+
 #: (retrofit)
 #: Operation and Maintenance
+#: Fixed cost
 function zFixCost(baseKind, kind, time) #: M$/GW
   multiplier, baseFuel = retFitBasedCoef(baseKind, kind, time)
   fixCost = multiplier * foam_mat[baseFuel+1, time+1]
   return fixCost*discount
 end
-
+#: Variable cost
 function zVarCost(baseKind, kind, time) #: M$/GW
   multiplier, baseFuel = retFitBasedCoef(baseKind, kind, time)
   varCost = multiplier * voam_mat[baseFuel+1, time+1]
@@ -354,19 +358,6 @@ end
 
 # MUSD/GWh
 # perhaps x and z do not have the same values as w
-
-currSheet = 1
-XLSX.openxlsx(fname*"_costCoef.xlsx", mode="w") do xf
-  sheet = xf[currSheet]
-  XLSX.rename!(sheet, "oandm-MUSDperGWh")
-  sheet["A1"] = "time"
-  sheet["A2", dim=1] = collect(0:T-1)
-  sheet["B1"] = ["tech=$(i)" for i in 0:I-1]
-  for t in 0:T-1
-    sheet["B"*string(t+2)] = [wOandMgwh[t, i] for i in 0:I-1]
-  end
-end
-currSheet += 1
 
 
 # Overnight, this should be only for new capacity (GW)
@@ -420,100 +411,25 @@ end
 # MUSD/GWh
 # how much does the retrofit cost?
 
-XLSX.openxlsx(fname*"_costCoef.xlsx", mode="rw") do xf
-  XLSX.addsheet!(xf)
-  sheet = xf[currSheet]
-  XLSX.rename!(sheet, "ocap-MUSDperGWh")
-  sheet["A1"] = "time"
-  sheet["A2", dim=1] = collect(0:T-1)
-  sheet["B1"] = ["tech=$(i)" for i in 0:I-1]
-  for t in 0:T-1
-    sheet["B"*string(t+2)] = [xCapCostGw[t, i] for i in 0:I-1]
-  end
-end
-currSheet += 1
 
-function retCostW(kind, time, age) #: M$/GW
+function retireCostW(kind, time, age) #: M$/GW
   baseAge = time - age > 0 ? time - age: 0.
+  #: Loan liability
   loanFrac = max(loan_period - age, 0)/loan_period
   loanLiability = loanFrac*cc_mat[kind+1, baseAge+1]/((1+discountRate)^t)
+  #: Decomission
   decom = util_decom[kind+1, age+1]/((1+discountRate)^t)
   #:
   effSrvLf = max(serviceLife[kind+1] - age, 0)
-  #: Somehow do not consider the capfactor
+  return loanLiability + decom # lostRev*365*24
+end
+
+function salesLostW(kind, time age) #: M$/GWh
+  #: we need the corresponding capacity factor afterwrds
   lostRev = effSrvLf*util_revenues[kind+1,time+1]/((1+discountRate)^t)
-  return loanLiability + decom + lostRev*365*24
+  return lostRev*365*24
 end
 
-XLSX.openxlsx(fname*"_testcostCoef.xlsx", mode="w") do xf
-  cs = 1
-  for i in 0:I-1
-    XLSX.addsheet!(xf)
-    sheet = xf[cs + i]
-    XLSX.rename!(sheet, "t0-$(i)")
-    sheet["A1"] = "time"
-    sheet["A2", dim=1] = collect(0:T-1)
-    sheet["B1"] = ["age=$(j)" for j in 0:N[i]-1]
-    for t in 0:T-1
-      sheet["B"*string(t+2)] = [t0[t, i, j] for j in 0:N[i]-1]
-    end
-  end
-  cs += I
-  for i in 0:I-1
-    XLSX.addsheet!(xf)
-    sheet = xf[cs + i]
-    XLSX.rename!(sheet, "t1-$(i)")
-    sheet["A1"] = "time"
-    sheet["A2", dim=1] = collect(0:T-1)
-    sheet["B1"] = ["age=$(j)" for j in 0:N[i]-1]
-    for t in 0:T-1
-      sheet["B"*string(t+2)] = [t1[t, i, j] for j in 0:N[i]-1]
-    end
-  end
-  cs += I
-  for i in 0:I-1
-    XLSX.addsheet!(xf)
-    sheet = xf[cs + i]
-    XLSX.rename!(sheet, "t2-$(i)")
-    sheet["A1"] = "time"
-    sheet["A2", dim=1] = collect(0:T-1)
-    sheet["B1"] = ["age=$(j)" for j in 0:N[i]-1]
-    for t in 0:T-1
-      sheet["B"*string(t+2)] = [t2[t, i, j] for j in 0:N[i]-1]
-    end
-  end
-
-  cs += I
-  for i in 0:I-1
-    XLSX.addsheet!(xf)
-    sheet = xf[cs + i]
-    XLSX.rename!(sheet, "ret-$(i)")
-    sheet["A1"] = "time"
-    sheet["A2", dim=1] = collect(0:T-1)
-    sheet["B1"] = ["age=$(j)" for j in 0:N[i]-1]
-    for t in 0:T-1
-      sheet["B"*string(t+2)] = [retireCost[t, i, j] for j in 0:N[i]-1]
-    end
-  end
-end
-
-
-
-currSheet = 3
-XLSX.openxlsx(fname*"_costCoef.xlsx", mode="rw") do xf
-  for i in 0:I-1
-    XLSX.addsheet!(xf)
-    sheet = xf[currSheet + i]
-    XLSX.rename!(sheet, "retireC-$(i)-MUSDperGWh")
-    sheet["A1"] = "time"
-    sheet["A2", dim=1] = collect(0:T-1)
-    sheet["B1"] = ["age=$(j)" for j in 0:N[i]-1]
-    for t in 0:T-1
-      sheet["B"*string(t+2)] = [retireCost[t, i, j] for j in 0:N[i]-1]
-    end
-  end
-end
-currSheet += I
 
 # Model creation
 m = Model(Clp.Optimizer)
@@ -1747,7 +1663,7 @@ XLSX.openxlsx(fname*"_ret_1.xlsx", mode="w") do xf
   end
 end
 
-
+#: What is this function for?
 function relTimeClass(lVals, relTimes)
   if sum(lVals) < 1e-08
     return Dict(t => 0.0 for t in range(0.1, 1, 10))
@@ -1974,7 +1890,4 @@ end
 
 @info("Done for good.\n")
 @info("Out files:\t$(fname0)\n")
-
-
-#variables of interest
 
