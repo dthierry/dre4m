@@ -13,7 +13,7 @@ Follow up of `m1.jl` where we use Clp with relaxed dual tolerance to solve the
 model.
 - `m3.jl`
 Third version of the model where we introduce the effective capacity indicator,
-`effCapInd[time, kind, kind_, age]` $$\in \[0, 1\]$$
+`effCapInd[time, kind, kind_, age]` $\in \[0, 1\]$
 - `m3-10-a.jl`
 Base file for the March presentation
 - `m4.jl`
@@ -22,3 +22,5 @@ New analysis and features.
 Implemented the additional retrofits to PC.
 - `m5_pre.jl`
 Removed age as dimension, new schemes.
+- `m4-3.jl`
+Change from MWh to MW, add capacity factors. 

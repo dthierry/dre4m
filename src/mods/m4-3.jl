@@ -157,13 +157,14 @@ XLSX.openxlsx(inputExcel, mode="r", enable_cache=true) do xf
   
   # LCCA $/MWh: This one involves the capital costs divided by 8760 hours,
   #: and the capacity factor.
-  global util_techcost = s["B115:CS125"] #: Needs to be changed
+  #: global util_techcost = s["B115:CS125"] #: Needs to be changed
 
   # Cent/MWh
   global util_revenues = s["B143:CS153"]  #: Needs update (units)
   
   #: $/MWh, some cost divided by the nominal size ($/MW) then scaled by 
   #: 1/(8760*cf)
+  #: we need to remove the capacity factor.
   global util_decom = s["B171:BI181"]
   
   # Demand (MWh, f(year))
@@ -202,7 +203,7 @@ fuel_mat = fuel_mat./1e6 # M$/MMBTU
 # heatRateInputMatrixNew = heatRateInputMatrixNew # to (MMBTU/GWh)
 
 # ($/MWh) --> (M$/GWh)
-util_techcost = util_techcost.*(1e3/1e6)
+# util_techcost = util_techcost.*(1e3/1e6)
 loan_period = 20
 
 # cent/kwh = 1/100 * 1000 $/MWh
@@ -218,7 +219,8 @@ emissionRate = emissionRate./1e3
 # ($/kW-yr) --> (M$/GW-yr) Same thing!
 # foam_mat = foam_mat 
 # kWyr --> 24*365*kWh
-foam_mat = foam_mat./(24*365)
+# kW <-- kWyr/(1 year)
+foam_mat = foam_mat.*1.
 
 # ($/MWh) --> (M$/GWh)
 voam_mat = voam_mat.*(1e3/1e6) 
@@ -289,11 +291,14 @@ end
 
 # Operation and Maintenance (adjusted)
 # (existing)
-wOandMgwh = Dict()
-for i in 0:I-1
-  for t in 0:T-1
-    wOandMgwh[t, i] = (foam_mat[i+1, t+1]/(cfac_mat[i+1, t+1]) + voam_mat[i+1, t+1])/((1+discountRate)^t)
-  end
+function wFixCost(basekind, time) #: M$/GW
+  #: Does not divide by the capacity factor
+  #: We could change this with the age as well.
+  return foam_mat[basekind+1, time+1]/((1+discountRate)^time)
+end
+function wVarCost(basekind, time) #: M$/GWh
+  #: Based on generation.
+  return voam_mat[basekind+1, time+1]/((1+discountRate)^time)
 end
 
 # factor for fixed o&m for carbon capture
@@ -302,9 +307,7 @@ carbCapOandMfact = Dict(
                     1 => 1.17001519, # igcc
                     2 => 2.069083447
                     )
-#: (retrofit)
-#: Operation and Maintenance
-function zOandMgwh(baseKind, kind, time)
+function retFitBasedCoef(baseKind, kind, time)
   multiplier = 1.
   baseFuel = baseKind
   discount = 1/((1+discountRate)^time)
@@ -315,7 +318,6 @@ function zOandMgwh(baseKind, kind, time)
   elseif baseKind ∈ [1, 3, 4] && kind == 0 #: efficiency RF
     multiplier = 1.
   end
-
   if baseKind == 0
     if kind == 2  #: fuel-switch
       baseFuel = 2
@@ -323,10 +325,22 @@ function zOandMgwh(baseKind, kind, time)
       baseFuel = 4
     end
   end
-  fixCost = multiplier * foam_mat[baseFuel+1, time+1]/cfac_mat[baseKind+1, time+1]
-  varCost = multiplier * voam_mat[baseFuel+1, time+1]
-  return (fixCost + varCost)*discount
+  return mutiplier, baseFuel
 end
+#: (retrofit)
+#: Operation and Maintenance
+function zFixCost(baseKind, kind, time) #: M$/GW
+  multiplier, baseFuel = retFitBasedCoef(baseKind, kind, time)
+  fixCost = multiplier * foam_mat[baseFuel+1, time+1]
+  return fixCost*discount
+end
+
+function zVarCost(baseKind, kind, time) #: M$/GW
+  multiplier, baseFuel = retFitBasedCoef(baseKind, kind, time)
+  varCost = multiplier * voam_mat[baseFuel+1, time+1]
+  return varCost*discount
+end
+
 
 # (new)
 xOandMgwh = Dict()
@@ -337,6 +351,7 @@ for i in 0:I-1
     end
   end
 end
+
 # MUSD/GWh
 # perhaps x and z do not have the same values as w
 
@@ -376,7 +391,7 @@ CarbCapFact = Dict(
 
 #: (retrofit)
 # retrofit overnight capital cost (M$/GW)
-function zCapCostGw(baseKind, kind, time)
+function zCapCostGw(baseKind, kind, time) #: M$/GW
   multiplier = 1.
   fuelKind = baseKind
   #: assume a factor of the cost of a new plant
@@ -418,31 +433,16 @@ XLSX.openxlsx(fname*"_costCoef.xlsx", mode="rw") do xf
 end
 currSheet += 1
 
-
-t0=Dict()
-t1=Dict()
-t2=Dict()
-#%
-retireCost = Dict()
-for t in 0:T-1
-  for i in 0:I-1
-    for j in 0:N[i]-1
-      baseAge = t - j > 0 ? t - j : 0
-      #retireCost[t, i, j] = 
-      # loan liability
-      #(max(loan_period - j, 0)/loan_period) * util_techcost[i+1, baseAge+1]/((1+discountRate)^t)
-      #
-      # lost revenue (number of years remaining * rev/yr)
-      #+ (max(serviceLife[i+1] - j, 0)
-      #   *util_revenues[i+1,t+1]/cfac_mat[i+1, t+1])/((1+discountRate)^t) 
-      # decommission
-      #+ util_decom[i+1, j+1]
-      t0[t, i, j]=(max(loan_period - j, 0)/loan_period) * util_techcost[i+1, baseAge+1]/((1+discountRate)^t)
-      t1[t, i, j]=(max(serviceLife[i+1] - j, 0)*util_revenues[i+1,t+1]/cfac_mat[i+1, t+1])/((1+discountRate)^t)
-      t2[t, i, j]=util_decom[i+1, j+1]/((1+discountRate)^t)
-      retireCost[t, i, j] = t0[t,i,j] + t1[t,i,j] + t2[t,i,j]
-    end
-  end
+function retCostW(kind, time, age) #: M$/GW
+  baseAge = time - age > 0 ? time - age: 0.
+  loanFrac = max(loan_period - age, 0)/loan_period
+  loanLiability = loanFrac*cc_mat[kind+1, baseAge+1]/((1+discountRate)^t)
+  decom = util_decom[kind+1, age+1]/((1+discountRate)^t)
+  #:
+  effSrvLf = max(serviceLife[kind+1] - age, 0)
+  #: Somehow do not consider the capfactor
+  lostRev = effSrvLf*util_revenues[kind+1,time+1]/((1+discountRate)^t)
+  return loanLiability + decom + lostRev*365*24
 end
 
 XLSX.openxlsx(fname*"_testcostCoef.xlsx", mode="w") do xf
@@ -768,6 +768,8 @@ wij = cap_mat
 #: these are the hard questions
 
 #: hey let's just create effective generation variables instead
+#: it seems that the capacity factors are the same regardless of 
+#: us having retrofits, new capacity, etc.
 yrHr = 24 * 365  # hours in a year
 
 @variable(m, Wgen[t=0:T-1, i=0:I-1, j=0:N[i]-1])
@@ -775,13 +777,13 @@ yrHr = 24 * 365  # hours in a year
 @variable(m, Xgen[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, j=0:(Nx[i, k]-1)])
 
 @constraint(m, WgEq[t=0:T-1, i=0:I-1, j=0:N[i]-1], 
-            Wg[t, i, j] == YrHr * cFactW[t, i, j]  * W[t, i, j]
+            Wgen[t, i, j] == YrHr * cFactW[t, i, j]  * W[t, i, j]
             )
 @constraint(m, ZgEq[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, j=0:Nz[i, k]-1],
-            Zg[t, i, k, j] == YrHr * cFactZ[t, i, k, j] * Z[t, i, k, j]
+            Zgen[t, i, k, j] == YrHr * cFactZ[t, i, k, j] * Z[t, i, k, j]
             )
 @constraint(m, XgEq[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, j=0:Nx[i, k]-1],
-            Xg[t, i, k, j] = YrHr * cFactX[t, i, k, j] * X[t, i, k, j]
+            Xgen[t, i, k, j] = YrHr * cFactX[t, i, k, j] * X[t, i, k, j]
             )
 
 # Demand (GWh)
@@ -993,7 +995,7 @@ co2Based[techToId["B"]] = true
             heat_w_E[t=0:T-1, i=0:I-1, 
                      j=0:N[i]-1; fuelBased[i]],
             heat_w[t, i, j] == 
-            Wg[t, i, j] * heatRateWf(i, j, t, N[i]-1)
+            Wgen[t, i, j] * heatRateWf(i, j, t, N[i]-1)
            )
 
 
@@ -1001,14 +1003,14 @@ co2Based[techToId["B"]] = true
             heat_z_E[t = 0:T-1, i = 0:I-1, k = 0:Kz[i]-1, 
                      j = 0:Nz[i, k]-1; fuelBased[i]],
             heat_z[t, i, k, j] == 
-            Zg[t, i, k, j] * heatRateZf(i, k, j, t, N[i]-1)
+            Zgen[t, i, k, j] * heatRateZf(i, k, j, t, N[i]-1)
            )
 
 @constraint(m,
             heat_x_E[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, 
                      j=0:Nx[i, k]-1; fuelBased[i]],
             heat_x[t, i, k, j] == 
-            Xg[t, i, k, j] * heatRateXf(i, k, j, t) 
+            Xgen[t, i, k, j] * heatRateXf(i, k, j, t) 
            )
 
 # Carbon emission (tCO2)
@@ -1064,35 +1066,59 @@ co2Based[techToId["B"]] = true
 
 # Operation and Maintenance for existing 
 #: Do we have to partition this term?
-@variable(m,
-          wOAndM[t=0:T-1, i=0:I-1])
-#: I think you don't need bounds if the coefficients below are positive.
+@variable(m, wFixOnM[t=0:T-1, i=0:I-1])
+@variable(m, wVarOnM[t=0:T-1, i=0:I-1])
+j
 @constraint(m,
-            wOAndM_E[t=0:T-1, i=0:I-1],
-            wOAndM[t, i] == 
-            wOandMgwh[t, i] * sum(W[t, i, j]
-                              for j in 0:N[i]-1)
+            wFixOnM_E[t=0:T-1, i=0:I-1],
+            wFixOnM[t, i] == 
+            wFixCost(i, t) * sum(W[t, i, j] for j in 0:N[i]-1)
            )
 
-# O and M for retrofit
-@variable(m,
-          zOandM[t=0:T-1, i=0:I-1])
 @constraint(m,
-            zOandM_E[t=0:T-1, i=0:I-1],
-            zOandM[t, i] == 
-            sum(zOandMgwh(i, k, t) * Z[t, i, k, j] 
+            wVarOnM_E[t=0:T-1, i=0:I-1],
+            wVarOnM[t, i] == 
+            wVarCost(i, t) * sum(Wgen[t, i, j] for j in 0:N[i]-1)
+           )
+
+
+# O and M for retrofit
+@variable(m, zFixOnM[t=0:T-1, i=0:I-1])
+@variable(m, zVarOnM[t=0:T-1, i=0:I-1])
+
+@constraint(m,
+            zFixOnM_E[t=0:T-1, i=0:I-1],
+            zFixOnM[t, i] == 
+            sum(zFixCost(i, k, t) * Z[t, i, k, j] 
                   for k in 0:Kz[i]-1 
                   for j in 0:N[i]-1 #: only related to the base age
                   ))
 
+@constraint(m,
+            zVarOnM_E[t=0:T-1, i=0:I-1],
+            zVarOnM[t, i] == 
+            sum(zVarCost(i, k, t) * Zgen[t, i, k, j] 
+                  for k in 0:Kz[i]-1 
+                  for j in 0:N[i]-1 #: only related to the base age
+                  ))
+
+
 # O and M for new
-@variable(m,
-          xOandM[t=0:T-1, i=0:I-1])
+@variable(m, xFixOnM[t=0:T-1, i=0:I-1])
+@variable(m, xVarOnM[t=0:T-1, i=0:I-1])
 
 @constraint(m,
-            xOandM_E[t=0:T-1, i=0:I-1],
-            xOandM[t, i] == 
-            sum(xOandMgwh[t, i, k] * X[t, i, k, j] 
+            xFixOnM_E[t=0:T-1, i=0:I-1],
+            xFixOnM[t, i] == 
+            sum(xFixCost(i, t) * X[t, i, k, j] 
+                for k in 0:Kx[i]-1 
+                for j in 0:Nx[i, k]-1)
+           )
+
+@constraint(m,
+            xVarOndM_E[t=0:T-1, i=0:I-1],
+            xVarOnM[t, i] == 
+            sum(xVarCost(i, t) * Xgen[t, i, k, j] 
                 for k in 0:Kx[i]-1 
                 for j in 0:Nx[i, k]-1)
            )
@@ -1181,18 +1207,18 @@ co22050 = co22010 * 0.29
 
 @constraint(m, wOldRetE[t=1:T-1, i=0:I-1],
             wOldRet[t, i] == 
-            retireCost[t, i, N[i]-1] * w[t, i, N[i]]
+            retCostW(t, i, N[i]-1) * w[t, i, N[i]]
            )
 
 @constraint(m, zOldRetE[t=1:T-1, i=0:I-1, k=0:Kz[i]-1],
             zOldRet[t, i, k] == 
-            retireCost[t, i, N[i]-1] * z[t, i, k, Nz[i, k]]
+            retCostW(t, i, N[i]-1) * z[t, i, k, Nz[i, k]]
            )
 
 
 @constraint(m, xOldRetE[t=1:T-1, i=0:I-1, k=0:Kx[i]-1],
             xOldRet[t, i, k] == 
-            retireCost[t, i, Nx[i, k]-1] * x[t, i, k, Nx[i, k]]
+            retCostW(t, i, Nx[i, k]-1) * x[t, i, k, Nx[i, k]]
            )
 
 # "Forced" retirement
@@ -1201,21 +1227,19 @@ co22050 = co22010 * 0.29
 @variable(m, xRet[i=0:I-1, k=0:Kx[i]-1, j=1:Nx[(i, k)]-1])
 
 @constraint(m, wRet_E[i=0:I-1, j=1:N[i]-1],
-            wRet[i, j] == sum(uw[t, i, j] * retireCost[t, i, j]
-                        for t in 0:T-1 
-                        )
+            wRet[i, j] == sum(retCostW(i, t, j) * uw[t, i, j] for t in 0:T-1)
            )
 
 @constraint(m, zRet_E[i=0:I-1, k=0:Kz[i]-1, j=1:Nz[(i,k)]-1],
-            zRet[i, k, j] == sum(uz[t, i, k, j] * retireCost[t, i, min(j, N[i]-1)] 
-                        for t in 0:T-1)
-                        )
+            zRet[i, k, j] 
+            == sum(retCostW(i, t, min(j, N[i]-1)) * uz[t, i, k, j] 
+            for t in 0:T-1)
+            )
 
 
 @constraint(m, xRet_E[i=0:I-1, k=0:Kx[i]-1, j=1:Nx[(i, k)]-1],
-            xRet[i, k, j] == sum(ux[t, i, k, j] * retireCost[t, i, j] 
-                        for t in 0:T-1 
-                        )
+            xRet[i, k, j] == sum(retCostW(i, t, j) * ux[t, i, k, j]
+            for t in 0:T-1)
            )
 
 # Net present value
@@ -1235,13 +1259,25 @@ co22050 = co22010 * 0.29
                 for t in 0:T-1
                 for i in 0:I-1
                )
-            # op and maint
+            # op and maintenance (fixed + variable)
+            #: existing
             + sum(
-                 wOAndM[t, i] 
-                 + zOandM[t, i] 
-                 + xOandM[t, i] 
+                wFixOnM[t, i] + wVarOnM[t, i]
                  for t in 0:T-1 
                  for i in 0:I-1)
+                 +
+            #: retrofit
+            + sum(
+                zFixOnM[t, i] + zVarOnM[t, i]
+                for t in 0:T-1
+                for i in 0:I-1
+                )
+            #: new
+            + sum(
+                xFixOnM[t, i] + xVarOnM[t, i]
+                for t in 0:T-1
+                for i in 0:I-1
+            )
             # cost of fuel
             + sum(
                   wFuelC[t, i] 
