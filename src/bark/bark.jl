@@ -4,3 +4,7 @@ function bark()
   println("bark!")
   println("bark!")
 end
+
+function owl()
+ wFixCost(1, 1) 
+end
