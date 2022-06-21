@@ -1,3 +1,8 @@
+#  Copyright 2022, David Thierry, and contributors
+#  This Source Code Form is subject to the terms of the MIT
+#  License, 
+#############################################################################
+
 #####
 # PREPROCESSING OF (SOME) COEFFICIENT MATRICES
 #####
@@ -17,7 +22,8 @@ function preProcCoef(c::coef)
 end
 
 function preProcAttr(a:attr)
-  :q
+  #: carbInt[=] kgCo2/MMBTU --> tCo2/MMBTU
+  a.carbInt./=1e3
 end
 
 #
