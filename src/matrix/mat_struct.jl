@@ -45,7 +45,7 @@ mutable struct timeAttr
   cFac::Array{Float64, 2}
   #: heat rate(s)
   heatRw::Array{Float64, 2} #: BTu/kWh
-  heatRx::Array{Float64, 2}
+  heatRx::Array{Float64, 2} #: BTu/kWh
   function timeAttr(inputFile::String)
     XLSX.openxlsx(inputFile, mode="r") do xf
     println("The data has been assumed to be in page 1")

@@ -1,3 +1,4 @@
+# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80
 #############################################################################
 #  Copyright 2022, David Thierry, and contributors
 #  This Source Code Form is subject to the terms of the MIT
@@ -8,35 +9,32 @@ using JuMP
 import Dates
 
 
-# Set cardinality
-# Subprocess
-I = 11
-
-
-# Time horizon
-T = 35 
-struct modelSet
-  T::Int64
-  I::Int64
+struct modSets
+  T::Int64 #: time-cardinality
+  I::Int64 #: tech-cardinality
   # Tech for subprocess i (retrofit)
   Kz::Dict{Int64, Int64}
   # Tech for subprocess i (new)
   Kx::Dict{Int64, Int64}
-  #: Age
+  #: Age-cardinality for tech-i
   N::Dict{Int64, Int64}
   #: Retrofit age
   Nz::Dict{Tuple{Int64, Int64}, Int64}
   #: New plant age
   Nx::Dict{Tuple{Int64, Int64}, Int64}
-  function modelSet(I::Int64, T::Int64, 
-  kinds_z::Vector, kind_x::Vector, servLife::Vector)
-    Kz = Dict(i => kind_z[i+1] for i in 0:I-1)
-    Kx = Dict(i => kind_x[i+1] for i in 0:I-1)
-    N = Dict(i => servLife[i] for i in 0:I-1)
-    Nz = Dict((i,k) => N[i] + floor(Int, servLife[i]*slIncrease) 
+  function modSets(T::Int64, 
+                   I::Int64, 
+                   kinds_z::Vector{Int64}, 
+                   kinds_x::Vector{Int64}, 
+                   servLife::Vector{Int64},
+                   sLfIncr::Float64)
+    Kz = Dict(i => kinds_z[i+1] for i in 0:I-1)
+    Kx = Dict(i => kinds_x[i+1] for i in 0:I-1)
+    N = Dict(i => servLife[i+1] for i in 0:I-1)
+    Nz = Dict((i,k) => N[i] + floor(Int, servLife[i+1]*sLfIncr) 
             for i in 0:I-1 for k in 0:Kz[i]-1)
-    Nx = Dict((i,k) => servLife[i] for i in 0:I-1 for k in 0:Kx[i]-1)
-
+    Nx = Dict((i,k) => servLife[i+1] for i in 0:I-1 for k in 0:Kx[i]-1)
+    new(T, I, Kz, Kx, N, Nz, Nx)
   end
 end
 
@@ -55,7 +53,6 @@ open(fname*"_kinds.txt", "w") do file
     write(file, "$(kinds_x[i+1])\n")
   end
 end
-
   @info("The budget: $((co22010 + co22050) * 0.5 * 41 - co2_2010_2015)")
   #: Last term is a trapezoid minus the 2010-2015 gap
   return m
@@ -351,7 +348,6 @@ function genCons(m::JuMP.Model)
              )
 
   # Equations
-
   @constraint(m, X_E0[t=0:T-1, i=0:I-1, k=0:Kx[i]-1],
               X[t, i, k, 0] == #effCapInd_x[i, k, 0] * 
               x[t-xDelay[i], i, k, 0]
@@ -370,9 +366,8 @@ function genCons(m::JuMP.Model)
               Zgen[t, i, k, j] == YrHr * cFactZ[t, i, k, j] * Z[t, i, k, j]
               )
   @constraint(m, XgEq[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, j=0:Nx[i, k]-1],
-              Xgen[t, i, k, j] = YrHr * cFactX[t, i, k, j] * X[t, i, k, j]
+              Xgen[t, i, k, j] == YrHr * cFactX[t, i, k, j] * X[t, i, k, j]
               )
- 
   #: Generation (GWh)
   @constraint(m, sGenEq[t = 1:T-1, i = 0:I-1],
             (
@@ -695,8 +690,8 @@ function genObj(m::JuMP.Model)
             )
 end
 
-
-function fixDelayed0()
+function fixDelayed0(m::JuMP.Model)
+  x = m[:x]
   maxDelay = maximum(values(xDelay))
   for t in -maxDelay:-1
     for i in 0:I-1
@@ -707,42 +702,3 @@ function fixDelayed0()
   end
 end
 #
-
-# Upper bound on some new techs
-upperBoundDict = Dict(
-                      "B" => 1000/1e3 * 0.59, 
-                      "N" => 1000/1e3 * 0.898, 
-                      "H" => 1000/1e3 * 0.42)
-#: Just do it directly using bounds on the damn variables
-
-for tech in keys(upperBoundDict)
-  id = techToId[tech]
-  for t in 1:T-1
-    for k in 0:Kx[id]-1
-      #for j in 0:Nx[id, k]
-      set_upper_bound(x[t, id, k, 0], upperBoundDict[tech])
-      #end
-    end
-  end
-end
-
-
-co22010 = 2.2584E+09
-co2_2010_2015 = 10515700000.0
-co22015 = co22010 - co2_2010_2015
-co22050 = co22010 * 0.29
-
-windIdx = 7
-
-optimize!(m)
-
-@info("objective\t$(objective_value(m))\n")
-
-finalTime = Dates.now()  # to log the results, I guess
-@info("End optimization\t$(finalTime)\n")
-
-printstyled(solution_summary(m), color=:magenta)
-
-@info("Done for good.\n")
-@info("Out files:\t$(fname0)\n")
-

@@ -9,119 +9,27 @@
 Data strucure that contains the structural information of the retrofits, new
  plants and so forth.
 """
-struct gridF
+struct gridForm
   #: kinds of retrofit for technology I
   kinds_x::Vector{Int32}
   #: kinds of new plants for technology I
   kinds_z::Vector{Int32}
+  #: delay for the new plants
   xDelay::Dict
+  #: delay for the retrofits
   zDelay::Dict
+  #: if TRUE tech is based on fuel
+  fuelBased::Dict
+  #: if TRUE tech fuel generates co2
+  co2Based::Dict
+  function gridForm(I::Int64)
+    kinds_x = zeros(Int32, I)
+    kinds_z = zeros(Int32, I)
+    xDelay = Dict(i => 0 for i in 0:I-1)
+    zDelay = Dict(i => 0 for i in 0:I-1)
+    fuelBased = Dict(i => false for i in 0:I-1)
+    co2Based = Dict(i => false for i in 0:I-1)
+    new(kinds_x, kinds_z, xDelay, zDelay, fuelBased, co2Based)
+  end
 end
-
-xDelay = Dict([i => 0 for i in 0:I-1])
-xDelay[techToId["PC"]] = 5
-xDelay[techToId["NGCT"]] = 4
-xDelay[techToId["NGCC"]] = 4
-xDelay[techToId["N"]] = 10
-xDelay[techToId["H"]] = 10
-
-
-# Fuel for a plant at a particular year/tech/age
-fuelBased = Dict(
-               0 => true, # pc
-               1 => true, # gt
-               2 => true, # cc
-               3 => true, # p
-               4 => true, # b
-               5 => true, # n
-               6 => false, # h
-               7 => false, # w
-               8 => false, # s
-               9 => false, # st
-               10 => false # g
-              )
-
-co2Based = Dict(i=>false for i in 0:I-1)
-co2Based[techToId["PC"]] = true
-co2Based[techToId["NGCT"]] = true
-co2Based[techToId["NGCC"]] = true
-co2Based[techToId["P"]] = true
-co2Based[techToId["B"]] = true
-
-
-# factor for fixed o&m for carbon capture
-carbCapOandMfact = Dict(
-                    0 => 2.130108424, #pc
-                    1 => 1.17001519, # igcc
-                    2 => 2.069083447
-                    )
-# factor for carbon capture retrofit
-CarbCapFact = Dict(
-                0 => 0.625693161, #pc
-                1 => 0.499772727, # igcc
-                2 => 1.047898338
-                )
-
-techToId = Dict()
-techToId["PC"] = 0
-techToId["NGCT"] = 1
-techToId["NGCC"] = 2
-techToId["P"] = 3
-techToId["B"] = 4
-techToId["N"] = 5
-techToId["H"] = 6
-techToId["W"] = 7
-techToId["SPV"] = 8
-techToId["STH"] = 9
-techToId["G"] = 10
-
-# 0 Pulverized Coal (PC)
-# 1 Natural Gas (NGGT) a turbine or smth
-# 2 Natural Gas (NGCC)
-# 3 Petroleum (P)
-# 4 Biomass (B)
-# 5 Nuclear (N)
-# 6 Hydroelectric (H)
-# 7 On-shore wind (W)
-# 8 Solar PV (SPV)
-# 9 Solar Thermal (STH)
-# 10 Geothermal (G)
-
-# Set arbitrary (new) tech for subprocess i
-kinds_x = [
-           1, # 0
-           1, # 1
-           1, # 2
-           1, # 3
-           1, # 4
-           1, # 5
-           1, # 6
-           1, # 7
-           1, # 8
-           1, # 9
-           1, # 10
-          ]
-
-kinds_z = [4, # 0
-           1, # 1
-           2, # 2
-           1, # 3
-           1, # 4
-           0, # 5
-           0, # 6
-           0, # 7
-           0, # 8
-           0, # 9
-           0, # 10
-          ]
-#: coal
-#: kind 0 := carbon capture
-#: kind 1 := efficiency
-#: kind 2 := coal --> NG
-#: kind 3 := coal --> Biom
-#: ngcc
-#: kind 0 := carbon capture
-#: kind 1 := efficiency
-#: all else efficiency
-
 
