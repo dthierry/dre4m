@@ -1,4 +1,9 @@
-# Copyright (c) David Thierry
+#############################################################################
+#  Copyright 2022, David Thierry, and contributors
+#  This Source Code Form is subject to the terms of the MIT
+#  License.
+#############################################################################
+
 module mid_s
 export bark 
 include("./bark/bark.jl")

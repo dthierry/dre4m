@@ -1,86 +1,13 @@
-import Clp
-Clp.Clp_Version()
-# attempt multi-retrofits
+#############################################################################
+#  Copyright 2022, David Thierry, and contributors
+#  This Source Code Form is subject to the terms of the MIT
+#  License.
+#############################################################################
 
 using JuMP
 import Dates
 
-initialTime = Dates.now()  # to log the results, I guess
-fname0 = Dates.format(initialTime, "eyymmdd-HHMMSS")
-fname = fname0  # copy name
-@info("Started\t$(initialTime)\n")
-@info("Out files:\t$(fname)\n")
-mkdir(fname)
-fname = "./"*fname*"/"*fname
 
-run(pipeline(`echo $(@__FILE__)`, stdout=fname*"_.out"))
-run(pipeline(`cat $(@__FILE__)`, stdout=fname*"_.out", append=true))
-
-
-# Set arbitrary (new) tech for subprocess i
-kinds_x = [
-           1, # 0
-           1, # 1
-           1, # 2
-           1, # 3
-           1, # 4
-           1, # 5
-           1, # 6
-           1, # 7
-           1, # 8
-           1, # 9
-           1, # 10
-          ]
-
-techToId = Dict()
-techToId["PC"] = 0
-techToId["NGCT"] = 1
-techToId["NGCC"] = 2
-techToId["P"] = 3
-techToId["B"] = 4
-techToId["N"] = 5
-techToId["H"] = 6
-techToId["W"] = 7
-techToId["SPV"] = 8
-techToId["STH"] = 9
-techToId["G"] = 10
-
-# 0 Pulverized Coal (PC)
-# 1 Natural Gas (NGGT) a turbine or smth
-# 2 Natural Gas (NGCC)
-# 3 Petroleum (P)
-# 4 Biomass (B)
-# 5 Nuclear (N)
-# 6 Hydroelectric (H)
-# 7 On-shore wind (W)
-# 8 Solar PV (SPV)
-# 9 Solar Thermal (STH)
-# 10 Geothermal (G)
-
-kinds_z = [4, # 0
-           1, # 1
-           2, # 2
-           1, # 3
-           1, # 4
-           0, # 5
-           0, # 6
-           0, # 7
-           0, # 8
-           0, # 9
-           0, # 10
-          ]
-#: coal
-#: kind 0 := carbon capture
-#: kind 1 := efficiency
-#: kind 2 := coal --> NG
-#: kind 3 := coal --> Biom
-#: ngcc
-#: kind 0 := carbon capture
-#: kind 1 := efficiency
-#: all else efficiency
-
-
-#
 # Set cardinality
 # Subprocess
 I = 11
@@ -88,82 +15,30 @@ I = 11
 
 # Time horizon
 T = 35 
-
-
-# util_cfs = capacity_factors
-discountRate = 0.07
-tcrit = 60
-
-# Normal heat increase with ageing?
-heatIncreaseRate = 0.001
-
-# Determine the age of plant
-discard = Dict()
-for i in 0:I-1
-  discard[i] = serviceLife[i+1]
-end
-
 struct modelSet
   T::Int64
   I::Int64
-# Tech for subprocess i (retrofit)
+  # Tech for subprocess i (retrofit)
   Kz::Dict{Int64, Int64}
-# Tech for subprocess i (new)
+  # Tech for subprocess i (new)
   Kx::Dict{Int64, Int64}
+  #: Age
   N::Dict{Int64, Int64}
+  #: Retrofit age
   Nz::Dict{Tuple{Int64, Int64}, Int64}
+  #: New plant age
   Nx::Dict{Tuple{Int64, Int64}, Int64}
-  function modelSet(kinds_z, kind_x, )
+  function modelSet(I::Int64, T::Int64, 
+  kinds_z::Vector, kind_x::Vector, servLife::Vector)
     Kz = Dict(i => kind_z[i+1] for i in 0:I-1)
     Kx = Dict(i => kind_x[i+1] for i in 0:I-1)
+    N = Dict(i => servLife[i] for i in 0:I-1)
+    Nz = Dict((i,k) => N[i] + floor(Int, servLife[i]*slIncrease) 
+            for i in 0:I-1 for k in 0:Kz[i]-1)
+    Nx = Dict((i,k) => servLife[i] for i in 0:I-1 for k in 0:Kx[i]-1)
+
   end
 end
-
-# Age of existing asset of age i \in I
-N = Dict()
-for i in 0:I-1
-  N[i] = discard[i]
-end
-
-# Age of the new asset of subproc i and tech k
-Nx = Dict()
-for i in 0:I-1
-  for k in 0:Kx[i]-1
-    Nx[(i, k)] = discard[i] # assume the same, simple as
-  end
-end
-
-# Consider disaggregated retrofit age
-#
-# Added longevity for subprocess i/tech k
-Nz = Dict()
-for i in 0:I-1
-  for k in 0:Kz[i]-1
-    Nz[i, k] = N[i] + floor(Int, discard[i] * 0.20) # assume 20%
-  end
-end
-
-
-# factor for fixed o&m for carbon capture
-carbCapOandMfact = Dict(
-                    0 => 2.130108424, #pc
-                    1 => 1.17001519, # igcc
-                    2 => 2.069083447
-                    )
-
-
-# MUSD/GWh
-# perhaps x and z do not have the same values as w
-
-
-
-# factor for carbon capture retrofit
-CarbCapFact = Dict(
-                0 => 0.625693161, #pc
-                1 => 0.499772727, # igcc
-                2 => 1.047898338
-                )
-
 
 # MUSD/GWh
 # how much does the retrofit cost?
@@ -180,7 +55,6 @@ open(fname*"_kinds.txt", "w") do file
     write(file, "$(kinds_x[i+1])\n")
   end
 end
-
 
   @info("The budget: $((co22010 + co22050) * 0.5 * 41 - co2_2010_2015)")
   #: Last term is a trapezoid minus the 2010-2015 gap
@@ -833,16 +707,6 @@ function fixDelayed0()
   end
 end
 #
-
-# Initial age distribution
-# Just assign it to the vector from excel
-wij = cap_mat 
-
-# Demand (GWh)
-d = Dict()
-for t in 0:T-1
-  d[(t, 0)] = d_mat[t+1]
-end
 
 # Upper bound on some new techs
 upperBoundDict = Dict(

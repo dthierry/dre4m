@@ -1,11 +1,18 @@
+#############################################################################
 #  Copyright 2022, David Thierry, and contributors
 #  This Source Code Form is subject to the terms of the MIT
-#  License, 
+#  License.
 #############################################################################
 
-
+"""
+   gridF
+Data strucure that contains the structural information of the retrofits, new
+ plants and so forth.
+"""
 struct gridF
+  #: kinds of retrofit for technology I
   kinds_x::Vector{Int32}
+  #: kinds of new plants for technology I
   kinds_z::Vector{Int32}
   xDelay::Dict
   zDelay::Dict
@@ -41,5 +48,80 @@ co2Based[techToId["NGCC"]] = true
 co2Based[techToId["P"]] = true
 co2Based[techToId["B"]] = true
 
+
+# factor for fixed o&m for carbon capture
+carbCapOandMfact = Dict(
+                    0 => 2.130108424, #pc
+                    1 => 1.17001519, # igcc
+                    2 => 2.069083447
+                    )
+# factor for carbon capture retrofit
+CarbCapFact = Dict(
+                0 => 0.625693161, #pc
+                1 => 0.499772727, # igcc
+                2 => 1.047898338
+                )
+
+techToId = Dict()
+techToId["PC"] = 0
+techToId["NGCT"] = 1
+techToId["NGCC"] = 2
+techToId["P"] = 3
+techToId["B"] = 4
+techToId["N"] = 5
+techToId["H"] = 6
+techToId["W"] = 7
+techToId["SPV"] = 8
+techToId["STH"] = 9
+techToId["G"] = 10
+
+# 0 Pulverized Coal (PC)
+# 1 Natural Gas (NGGT) a turbine or smth
+# 2 Natural Gas (NGCC)
+# 3 Petroleum (P)
+# 4 Biomass (B)
+# 5 Nuclear (N)
+# 6 Hydroelectric (H)
+# 7 On-shore wind (W)
+# 8 Solar PV (SPV)
+# 9 Solar Thermal (STH)
+# 10 Geothermal (G)
+
+# Set arbitrary (new) tech for subprocess i
+kinds_x = [
+           1, # 0
+           1, # 1
+           1, # 2
+           1, # 3
+           1, # 4
+           1, # 5
+           1, # 6
+           1, # 7
+           1, # 8
+           1, # 9
+           1, # 10
+          ]
+
+kinds_z = [4, # 0
+           1, # 1
+           2, # 2
+           1, # 3
+           1, # 4
+           0, # 5
+           0, # 6
+           0, # 7
+           0, # 8
+           0, # 9
+           0, # 10
+          ]
+#: coal
+#: kind 0 := carbon capture
+#: kind 1 := efficiency
+#: kind 2 := coal --> NG
+#: kind 3 := coal --> Biom
+#: ngcc
+#: kind 0 := carbon capture
+#: kind 1 := efficiency
+#: all else efficiency
 
 

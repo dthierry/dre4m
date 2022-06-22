@@ -1,3 +1,10 @@
+#############################################################################
+#  Copyright 2022, David Thierry, and contributors
+#  This Source Code Form is subject to the terms of the MIT
+#  License.
+#############################################################################
+
+
 #inputExcel_cap_mat = 
 #"/Users/dthierry/Projects/mid-s/data/cap_mw.xlsx"
 
@@ -28,17 +35,18 @@
 # carbon intensity
 #
 using XLSX
-mutable struct coef
+
+mutable struct timeAttr
+  #: initial capacity
   initCap::Array{Float64, 2} #: MW
-  capC::Array{Float64, 2} #: $/kW
-  fixC::Array{Float64, 2} #: $/kWyr
-  varC::Array{Float64, 2} #: $/MWh
+  #: demand
+  nachF::Array{Float64, 2} #: MWh
+  #: capacity Factor
   cFac::Array{Float64, 2}
-  decomC::Array{Float64, 2}  #: $/MW
-  elecSaleC::Array{Float64, 2} #: cent/kWh
+  #: heat rate(s)
   heatRw::Array{Float64, 2} #: BTu/kWh
   heatRx::Array{Float64, 2}
-  function coef(inputFile::String)
+  function timeAttr(inputFile::String)
     XLSX.openxlsx(inputFile, mode="r") do xf
     println("The data has been assumed to be in page 1")
     # set sheet
@@ -58,10 +66,45 @@ mutable struct coef
   end
 end
 
+mutable struct costAttr
+  #: das Kapital
+  capC::Array{Float64, 2} #: $/kW
+  #: Fixed O&M
+  fixC::Array{Float64, 2} #: $/kWyr
+  #: Variabl O&M
+  varC::Array{Float64, 2} #: $/MWh
+  #: Decomission
+  decomC::Array{Float64, 2}  #: $/MW
+  #: Sales
+  elecSaleC::Array{Float64, 2} #: cent/kWh
+  function costAttr(inputFile::String)
+    XLSX.openxlsx(inputFile, mode="r") do xf
+    println("The data has been assumed to be in page 1")
+    # set sheet
+    s = xf["Sheet1"]
+    # set arrays
+    ic = s["B3:BT13"]
+    cc = s["B17:CS27"]
+    fc = s["B31:CS41"]
+    vc = s["B45:CS55"]
+    cf = s["B59:CS69"]
+    dc = s["C87:C97"]
+    es = s["B100:CS100"]
+    ho = s["B104:BI114"]
+    hn = s["B118:CS128"]
+    new(ic, cc, fc, vc, cf, dc, es, ho, hn)
+    end
+  end
+end
 
 mutable struct attr
   servLife::Array{Float64} #: yr
   carbInt::Array{Float64} #: kgCO2/MMBTU
+  # util_cfs = capacity_factors
+  #: Discount rate
+  discountR::Float64
+  #: Heat rate increase
+  heatIncR::Float64
   function attr(inputFile::String)
     XLSX.openxlsx(inputFile, mode="r") do xf
     println("The data has been assumed to be in page 2")
