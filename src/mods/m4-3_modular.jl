@@ -8,68 +8,38 @@
 using JuMP
 import Dates
 
+"""
+    genModel
 
-struct modSets
-  T::Int64 #: time-cardinality
-  I::Int64 #: tech-cardinality
-  # Tech for subprocess i (retrofit)
-  Kz::Dict{Int64, Int64}
-  # Tech for subprocess i (new)
-  Kx::Dict{Int64, Int64}
-  #: Age-cardinality for tech-i
-  N::Dict{Int64, Int64}
-  #: Retrofit age
-  Nz::Dict{Tuple{Int64, Int64}, Int64}
-  #: New plant age
-  Nx::Dict{Tuple{Int64, Int64}, Int64}
-  function modSets(T::Int64, 
-                   I::Int64, 
-                   kinds_z::Vector{Int64}, 
-                   kinds_x::Vector{Int64}, 
-                   servLife::Vector{Int64},
-                   sLfIncr::Float64)
-    Kz = Dict(i => kinds_z[i+1] for i in 0:I-1)
-    Kx = Dict(i => kinds_x[i+1] for i in 0:I-1)
-    N = Dict(i => servLife[i+1] for i in 0:I-1)
-    Nz = Dict((i,k) => N[i] + floor(Int, servLife[i+1]*sLfIncr) 
-            for i in 0:I-1 for k in 0:Kz[i]-1)
-    Nx = Dict((i,k) => servLife[i+1] for i in 0:I-1 for k in 0:Kx[i]-1)
-    new(T, I, Kz, Kx, N, Nz, Nx)
-  end
-end
-
-# MUSD/GWh
-# how much does the retrofit cost?
-function genModel()::JuMP.Model
+"""
+function genModel(modSets, modData)::JuMP.Model
   #: Model creation
   m = Model()
-open(fname*"_kinds.txt", "w") do file
-  write(file, "kinds_z\n")
-  for i in 0:I-1
-    write(file, "$(kinds_z[i+1])\n")
-  end
-  write(file, "kinds_x\n")
-  for i in 0:I-1
-    write(file, "$(kinds_x[i+1])\n")
-  end
-end
+    open(fname*"_kinds.txt", "w") do file
+      write(file, "kinds_z\n")
+      for i in 0:I-1
+        write(file, "$(kinds_z[i+1])\n")
+      end
+      write(file, "kinds_x\n")
+      for i in 0:I-1
+        write(file, "$(kinds_x[i+1])\n")
+      end
+    end
+  ##
   @info("The budget: $((co22010 + co22050) * 0.5 * 41 - co2_2010_2015)")
   #: Last term is a trapezoid minus the 2010-2015 gap
-  return m
-end
 
-function genVars(m::JuMP.Model)
   # Variables
   # this goes to N just because we need to constrain z at N-1
   # existing asset (GWh)
   @variable(m,
             w[t=0:T, i=0:I-1, j=0:N[i]] >= 0.)
-
+  
   # retired existing asset
   @variable(m, uw[t = 0:T, i = 0:I-1, j = 1:N[i]-1] >= 0)
   # we don't retire at year 0 or at the last year i.e \{0, N}
   #
-
+  
   # new asset
   @variable(m, x[t = -maxDelay:T, i = 0:I-1, 
                  k = 0:Kx[i]-1, j = 0:Nx[(i, k)]] >= 0)
@@ -107,6 +77,7 @@ function genVars(m::JuMP.Model)
   @variable(m, W[t=0:T-1, 
                  i=0:I-1, 
                  j=0:N[i]-1])
+
   @variable(m, 
             Z[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, j=0:(Nz[i, k]-1)]
            )
@@ -124,18 +95,21 @@ function genVars(m::JuMP.Model)
 
   @variable(m, 
             Wgen[t=0:T-1, i=0:I-1, j=0:N[i]-1])
+
   @variable(m, 
             Zgen[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, j=0:(Nz[i, k]-1)])
+
   @variable(m, 
             Xgen[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, j=0:(Nx[i, k]-1)])
+
   #: Generation (GWh)
   @variable(m, sGen[t = 1:T-1, i = 0:I-1]) #: supply generated
 
   @variable(m, heat_w[t = 0:T-1, i = 0:I-1, j = 0:N[i]-1; fuelBased[i]])
 
   @variable(m, 
-            heat_z[t = 0:T-1, i = 0:I-1, k = 0:Kz[i]-1, j = 0:Nz[i, k]-1, 
-                   ; fuelBased[i]])
+            heat_z[t=0:T-1, 
+                   i=0:I-1, k=0:Kz[i]-1, j=0:Nz[i, k]-1; fuelBased[i]])
 
   @variable(m, 
             heat_x[t=0:T-1, i=0:I-1, 
@@ -182,7 +156,6 @@ function genVars(m::JuMP.Model)
   # <= 6.71E+10 * 0.7)
   # <=6.71E+10 * 0.7)
 
-
   # Natural "organic" retirement
   @variable(m, wOldRet[t=1:T-1, i=0:I-1])
   @variable(m, zOldRet[t=1:T-1, i=0:I-1, k=0:Kz[i]-1])
@@ -192,7 +165,6 @@ function genVars(m::JuMP.Model)
   @variable(m, wRet[i=0:I-1, j=1:N[i]-1])
   @variable(m, zRet[i=0:I-1, k=0:Kz[i]-1, j=1:Nz[(i, k)]-1])
   @variable(m, xRet[i=0:I-1, k=0:Kx[i]-1, j=1:Nx[(i, k)]-1])
-
 
   # Net present value
   @variable(m, npv) # ≥ 1000. * 2000.)
@@ -207,10 +179,9 @@ function genVars(m::JuMP.Model)
                       j=0:Nz[i, k]-1])
 
   @variable(m, termCost >= 0)
+  
+  ############ Constraint definition $$$$$$$$$$$$
 
-end
-
-function genCons(m::JuMP.Model)
   # w0 balance0
   @constraint(m, 
             wbal0[t = 0:T-1, i = 0:I-1],
@@ -285,7 +256,6 @@ function genCons(m::JuMP.Model)
               w_age0_E[t = 1:T, i = 0:I-1],
               w[t, i, 0] == 0
              )
-
 
   @constraint(m,
               z_age0_E[t = 1:T, 
@@ -674,8 +644,17 @@ function genCons(m::JuMP.Model)
 
 end
 
-function genObj(m::JuMP.Model)
+
+"""
+    genObj()
+Generates the objective function.
+"""
+function genObj(m::JuMP.Model, modSets, modData)
   @info "Setting objective.."
+  xOcap = m[:xOcap]
+  co2OverallYr = m[:co2Overall]
+  termCost = m[:termCost]
+
   @objective(m, Min, (npv
                      #+ 50/1e6 * co2Overall
                      #sum(co2OverallYr[t] for t in 0:T-1) #+

@@ -67,7 +67,7 @@ mutable struct timeAttr
 end
 
 mutable struct costAttr
-  #: das Kapital
+  #: the Kapital
   capC::Array{Float64, 2} #: $/kW
   #: Fixed O&M
   fixC::Array{Float64, 2} #: $/kWyr
@@ -97,7 +97,7 @@ mutable struct costAttr
   end
 end
 
-mutable struct attr
+mutable struct invrAttr
   servLife::Array{Float64} #: yr
   carbInt::Array{Float64} #: kgCO2/MMBTU
   # util_cfs = capacity_factors
