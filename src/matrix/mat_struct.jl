@@ -50,18 +50,23 @@ mutable struct timeAttr
     XLSX.openxlsx(inputFile, mode="r") do xf
     println("The data has been assumed to be in page 1")
     # set sheet
-    s = xf["Sheet1"]
+    s = xf["timeAttr"]
     # set arrays
     ic = s["B3:BT13"]
-    cc = s["B17:CS27"]
-    fc = s["B31:CS41"]
-    vc = s["B45:CS55"]
-    cf = s["B59:CS69"]
-    dc = s["C87:C97"]
-    es = s["B100:CS100"]
-    ho = s["B104:BI114"]
-    hn = s["B118:CS128"]
-    new(ic, cc, fc, vc, cf, dc, es, ho, hn)
+    nh = s["B17:CS17"]
+    cf = s["B21:CS31"] 
+    ho = s["B35:BI45"]
+    hn = s["B49:CS59"]
+    println(typeof(ic))
+    println(typeof(nh))
+    println(typeof(cf))
+    println(typeof(ho))
+    println(typeof(hn))
+    new(ic, 
+        nh, 
+        cf, 
+        ho, 
+        hn)
     end
   end
 end
@@ -73,26 +78,22 @@ mutable struct costAttr
   fixC::Array{Float64, 2} #: $/kWyr
   #: Variabl O&M
   varC::Array{Float64, 2} #: $/MWh
-  #: Decomission
-  decomC::Array{Float64, 2}  #: $/MW
   #: Sales
   elecSaleC::Array{Float64, 2} #: cent/kWh
+  #: Decomission (time invariant)
+  decomC::Array{Float64, 2}  #: $/MW
   function costAttr(inputFile::String)
     XLSX.openxlsx(inputFile, mode="r") do xf
     println("The data has been assumed to be in page 1")
     # set sheet
-    s = xf["Sheet1"]
+    s = xf["costAttr"]
     # set arrays
-    ic = s["B3:BT13"]
-    cc = s["B17:CS27"]
-    fc = s["B31:CS41"]
-    vc = s["B45:CS55"]
-    cf = s["B59:CS69"]
-    dc = s["C87:C97"]
-    es = s["B100:CS100"]
-    ho = s["B104:BI114"]
-    hn = s["B118:CS128"]
-    new(ic, cc, fc, vc, cf, dc, es, ho, hn)
+    cc = s["B3:CS13"]
+    fc = s["B17:CS27"]
+    vc = s["B31:CS41"]
+    es = s["B44:CS44"]
+    dc = s["E48:E58"]
+    new(cc, fc, vc, es, dc)
     end
   end
 end
@@ -105,14 +106,16 @@ mutable struct invrAttr
   discountR::Float64
   #: Heat rate increase
   heatIncR::Float64
-  function attr(inputFile::String)
+  function invrAttr(inputFile::String)
     XLSX.openxlsx(inputFile, mode="r") do xf
     println("The data has been assumed to be in page 2")
     # set sheet
-    s = xf["Sheet2"]
+    s = xf["invrAttr"]
     sl = s["C9:C19"]
     ci = s["D9:D19"]
-    new(sl, ci)
+    dr = s["B21"]
+    hri = s["B22"]
+    new(sl, ci, dr, hri)
     end
   end
 end
