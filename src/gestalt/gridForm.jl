@@ -4,12 +4,14 @@
 #  License.
 #############################################################################
 
+abstract type aForm end
+
 """
    gridF
 Data strucure that contains the structural information of the retrofits, new
  plants and so forth.
 """
-struct gridForm
+struct gridForm <: aForm
   #: kinds of retrofit for technology I
   kinds_x::Vector{Int32}
   #: kinds of new plants for technology I
