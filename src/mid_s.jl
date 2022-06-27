@@ -10,6 +10,7 @@ module mid_s
     include("./bark/bark.jl")
     include("./matrix/mat_struct.jl")
     include("./matrix/read_mat.jl")
+    include("./gestalt/gridForm.jl")
     include("./gestalt/modKern.jl")
     #include("./gestalt/form.jl")
     include("./mods/m4-3_modular.jl")

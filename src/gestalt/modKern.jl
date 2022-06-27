@@ -19,7 +19,8 @@ struct modSets
   Nz::Dict{Tuple{Int64, Int64}, Int64}
   #: New plant age
   Nx::Dict{Tuple{Int64, Int64}, Int64}
-  function modSets(f::aForm)
+  function modSets(T::Int64, I::Int64, f::aForm, 
+                   servLife::Vector{Int64}, sLfIncr::Float64)
   #function modSets(T::Int64, 
   #                 I::Int64, 
   #                 kinds_z::Vector{Int64}, 

@@ -12,21 +12,33 @@ import Dates
     genModel
 
 """
-function genModel(modSets, modData)::JuMP.Model
+function genModel(modSets::modSets, modData::modData)::JuMP.Model
+  #: Initial sets
+  T = modSets.T
+  I = modSets.I
+  N = modSets.N
+  Nz = modSets.Nz
+  Nx = modSets.Nx
+  Kz = modSets.Kx
+  Kx = modSets.Kx
+
+  modData.ta
+
+
   #: Model creation
   m = Model()
-    open(fname*"_kinds.txt", "w") do file
-      write(file, "kinds_z\n")
-      for i in 0:I-1
-        write(file, "$(kinds_z[i+1])\n")
-      end
-      write(file, "kinds_x\n")
-      for i in 0:I-1
-        write(file, "$(kinds_x[i+1])\n")
-      end
-    end
+  #  open(fname*"_kinds.txt", "w") do file
+  #    write(file, "kinds_z\n")
+  #    for i in 0:I-1
+  #      write(file, "$(kinds_z[i+1])\n")
+  #    end
+  #    write(file, "kinds_x\n")
+  #    for i in 0:I-1
+  #      write(file, "$(kinds_x[i+1])\n")
+  #    end
+  #  end
   ##
-  @info("The budget: $((co22010 + co22050) * 0.5 * 41 - co2_2010_2015)")
+  #@info("The budget: $((co22010 + co22050) * 0.5 * 41 - co2_2010_2015)")
   #: Last term is a trapezoid minus the 2010-2015 gap
 
   # Variables
@@ -187,8 +199,7 @@ function genModel(modSets, modData)::JuMP.Model
             wbal0[t = 0:T-1, i = 0:I-1],
             w[t+1, i, 1] == w[t, i, 0])
   # can't retire stuff at the beginning, can't retrofit stuff as well
-  #
-  #
+  
   # w balance0
   @constraint(m, 
             wbal[t = 0:T-1, i = 0:I-1, j = 2:N[i]],
@@ -200,7 +211,6 @@ function genModel(modSets, modData)::JuMP.Model
   # we need j=N to constrain z at j = N-1, simple as
 
   # z at age 1 balance
-
   @constraint(m, 
               zbal0[t = 0:T-1, i = 0:I-1, k = 0:Kz[i]-1],
               z[t+1, i, k, 1] == z[t, i, k, 0]
