@@ -411,13 +411,13 @@ function genModel(modSets::modSets, modData::modData)::JuMP.Model
 
   @constraint(m, xOcapE[t=0:T-1, i=0:I-1],
               xOcap[t, i] == sum(
-                                 xCapCostGw[t, i] * x[t, i, k, 0]
+                                 xCapCost(mD, i, t) * x[t, i, k, 0]
                                  for k in 0:Kx[i]-1
                                 )
              )
   @constraint(m, zOcapE[t=0:T-1, i=0:I-1, k=0:Kz[i]-1],
               zOcap[t, i, k] == sum(
-                                 zCapCostGw(i, k, t) * zp[t, i, k, j]
+                                 zCapCost(mD, i, k, i, t) * zp[t, i, k, j]
                                  for j in 1:N[i]-1 
                                  #: only related to the base age
                                 )

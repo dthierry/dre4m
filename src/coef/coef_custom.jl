@@ -29,35 +29,58 @@ end
 
 # Operation and Maintenance (adjusted)
 # (existing)
-function wFixCost(basekind, time) #: M$/GW
+function wFixCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GW
   #: Does not divide by the capacity factor
   #: We could change this with the age as well.
-  return foam_mat[basekind+1, time+1]/((1+discountRate)^time)
+  cA = mD.ca
+  iA = mD.ia
+  return cA.fixC[baseKind+1, time+1]/((1.+iA.discountR)^time)
+  #foam_mat[basekind+1, time+1]/((1+discountRate)^time)
 end
-function wVarCost(basekind, time) #: M$/GWh
+function wVarCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GWh
   #: Based on generation.
-  return voam_mat[basekind+1, time+1]/((1+discountRate)^time)
+  cA = mD.ca
+  iA = mD.ia
+  return cA.varC[baseKind+1, time+1]/((1.+iA.discountR)^time)
+  #voam_mat[basekind+1, time+1]/((1+discountRate)^time)
+end
+
+function xCapCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GW
+  #: Based on capacity.
+  cA = mD.ca
+  iA = mD.ia
+  return cA.capC[baseKind+1, time+1]/((1.+iA.discountR)^time)
 end
 
 
 #: (retrofit)
 #: Operation and Maintenance
 #: Fixed cost
-function zFixCost(baseKind, kind, time) #: M$/GW
+function zFixCost(mD::modData, baseKind::Int64, kind::Int64, time::Int64) 
+  #: M$/GW
+  cA = mD.ca
+  iA = mD.ia
   multiplier, baseFuel = retFitBasedCoef(baseKind, kind, time)
-  fixCost = multiplier * foam_mat[baseFuel+1, time+1]
+  fixCost = multiplier * cA.fixC[baseFuel+1, time+1]
   return fixCost*discount
 end
 #: Variable cost
-function zVarCost(baseKind, kind, time) #: M$/GW
+function zVarCost(mD::modData, baseKind::Int64, kind::Int64, time::Int64) 
+  #: M$/GWh
+  cA = mD.ca
+  iA = mD.ia
   multiplier, baseFuel = retFitBasedCoef(baseKind, kind, time)
-  varCost = multiplier * voam_mat[baseFuel+1, time+1]
+  varCost = multiplier * cA.varC[baseFuel+1, time+1]
   return varCost*discount
 end
 
 #: (retrofit)
 # retrofit overnight capital cost (M$/GW)
-function zCapCostGw(baseKind, kind, time) #: M$/GW
+function zCapCost(mD::modData, baseKind::Int64, kind::Int64, time::Int64) 
+  #: M$/GW
+  cA = mD.ca
+  iA = mD.ia
+
   multiplier = 1.
   fuelKind = baseKind
   #: assume a factor of the cost of a new plant
@@ -77,44 +100,58 @@ function zCapCostGw(baseKind, kind, time) #: M$/GW
     fuelKind = 4
   end
 
-  capCost = multiplier * xCapCostGw[time, fuelKind]
+  capCost = multiplier * xCapCost(mD, baseKind, time)
 
   return capCost
 end
 
-function retireCostW(kind, time, age) #: M$/GW
+function retireCostW(mD::modData, kind::Int64, time::Int64, age::Int64) 
+  #: M$/GW
+  cA = mD.ca
+  iA = mD.ia
   baseAge = time - age > 0 ? time - age: 0.
   #: Loan liability
-  loanFrac = max(loan_period - age, 0)/loan_period
-  loanLiability = loanFrac*cc_mat[kind+1, baseAge+1]/((1+discountRate)^t)
+  loanFrac = max(iA.loanP - age, 0)/iA.loanP
+  loanLiability = loanFrac*cA.capC[kind+1, baseAge+1]/((1+iA.discountR)^t)
   #: Decomission
-  decom = util_decom[kind+1, age+1]/((1+discountRate)^t)
+  decom = cA.decomC[kind+1, age+1]/((1+iA.discountR)^t)
   #:
-  effSrvLf = max(serviceLife[kind+1] - age, 0)
+  effSrvLf = max(iA.servLife[kind+1] - age, 0)
   return loanLiability + decom # lostRev*365*24
 end
 
-function salesLostW(kind, time age) #: M$/GWh
+function salesLostW(mD::modData, kind::Int64, time::Int64, age::Int64) 
+  #: M$/GWh
+  cA = mD.ca
+  iA = mD.ia
+  effSrvLf = max(iA.servLife[kind+1] - age, 0)
   #: we need the corresponding capacity factor afterwrds
-  lostRev = effSrvLf*util_revenues[kind+1,time+1]/((1+discountRate)^t)
+  lostRev = effSrvLf*cA.elecSale[kind+1,time+1]/((1.+iA.discountR)^t)
   return lostRev*365*24
 end
 
 
 #: existing plant heat rate, (hr0) * (1+increase) ^ time
-function heatRateWf(kind, age, time, maxBase)
+function heatRateW(mD::modData, kind::Int64, age::Int64, 
+                    time::Int64, maxBase::Int64)
+  tA = mD.ta
+  iA = md.ia
   if age < time # this case does not exists
     return 0
   else
     baseAge = age - time
     baseAge = min(maxBase, baseAge)
-    return heatRateInputMatrix[kind+1, baseAge+1] * (1+heatIncreaseRate)^time
+    return tA.heatRw[kind+1, baseAge+1] * (1.+iA.heatIncR)^time
+    # return heatRateInputMatrix[kind+1, baseAge+1] * (1+heatIncreaseRate)^time
   end
 end
 
 #: (retrofit)
 #: HeatRate
-function heatRateZf(baseKind, kind, age, time, maxBase)
+function heatRateZ(mD::modData, baseKind::Int64, kind::Int64, 
+                   age::Int64, time::Int64, maxBase::Int64)
+  tA = mD.ta
+  iA = md.ia
   if age < time # this case does not exists
     return 0
   else
@@ -127,7 +164,6 @@ function heatRateZf(baseKind, kind, age, time, maxBase)
     elseif baseKind ∈ [1, 3, 4] && kind == 0
       multiplier = 0.7  #: efficiency RF
     end
-
     if baseKind == 0 && kind == 2 #: Fuel RF for coal
         fuelKind = 2 # Natural gas
     elseif baseKind == 0 && kind == 3 # Fuel RF
@@ -135,24 +171,29 @@ function heatRateZf(baseKind, kind, age, time, maxBase)
     end
     baseAge = age - time
     baseAge = min(maxBase, baseAge)
-    heatrate = (heatRateInputMatrix[fuelKind+1, baseAge+1] * (1+heatIncreaseRate)^time)
+    heatrate = (tA.heatRw[fuelKind+1, baseAge+1]*(1.+iA.heatIncR)^time)
       return heatrate * multiplier
   end
 end
 ##
 
-function heatRateXf(baseKind, kind, age, time)
+function heatRateX(mD::modData, baseKind::Int64, kind::Int64, 
+                   age::Int64, time::Int64)
+  tA = mD.ta
+  iA = md.ia
   if time < age
     return 0
   end
   baseTime = time - age # simple as.
   baseTime = max(baseTime - xDelay[baseKind], 0) # but actually if it's less than 0 just take 0
-  return heatRateInputMatrixNew[baseKind+1, baseTime+1] * (1 + heatIncreaseRate) ^ time
+  return tA.heatRx[baseKind+1, baseTime+1] * (1 + heatIncreaseRate) ^ time
 end
 
 #: (retrofit)
 #: Carbon instance
-function carbonIntensity(baseKind, kind=-1)
+function carbonIntensity(mD::modDota, baseKind::Int64, kind::Int64=-1)
+  tA = mD.ta
+  iA = md.ia
   multiplier = 1.  # give or take depending on the kind
   fuelKind = baseKind
   if baseKind ∈ [0, 2] && kind == 0  #: carbon capture RF
@@ -166,12 +207,15 @@ function carbonIntensity(baseKind, kind=-1)
       fuelKind = 4 # biomass
     end
   end
-
-  return emissionRate[fuelKind+1] * multiplier
+  return iA.carbInt[fuelKind+1] * multiplier
 end
 
 #: fuel costs only include those techs that are based in fuel burning
-function fuelDiscounted(baseKind, time, kind=-1)
+function fuelDiscounted(mD::modData, baseKind::Int64, 
+                        time::Int64, kind::Int64=-1)
+  tA = mD.ta
+  cA = mD.ca
+  iA = md.ia
   fuelKind = baseKind
   if kind == 2
     fuelKind = 1
@@ -181,19 +225,6 @@ function fuelDiscounted(baseKind, time, kind=-1)
   elseif kind == 3
     fuelKind = 2
   end
-  return fuel_mat[fuelKind+1, time+1] / ((1+discountRate)^time)
+  return cA.fuelC[fuelKind+1, time+1] / ((1+iA.discountR)^time)
 end
 
-# Overnight, this should be only for new capacity (GW)
-xCapCostGw = Dict()
-for i in 0:I-1
-  for t in 0:T-1
-    xCapCostGw[t, i] = cc_mat[i+1, t+1]/((1+discountRate)^t)
-    # xCapCostGw[t, i] = 
-    # (cc_mat[i+1, t+1]/cfac_mat[i+1, t+1])/((1+discountRate)^t)
-    # we do not want this.
-  end
-end
-#: the cfact_mat is required here, don't ask me why.
-#: should we have it?
-#

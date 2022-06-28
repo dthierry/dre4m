@@ -57,11 +57,6 @@ mutable struct timeAttr
     cf = s["B21:CS31"] 
     ho = s["B35:BI45"]
     hn = s["B49:CS59"]
-    println(typeof(ic))
-    println(typeof(nh))
-    println(typeof(cf))
-    println(typeof(ho))
-    println(typeof(hn))
     new(ic, 
         nh, 
         cf, 
@@ -80,6 +75,8 @@ mutable struct costAttr
   varC::Array{Float64, 2} #: $/MWh
   #: Sales
   elecSaleC::Array{Float64, 2} #: cent/kWh
+  #: Fuel
+  fuelC::Array{Float64, 2}
   #: Decomission (time invariant)
   decomC::Array{Float64, 2}  #: $/MW
   function costAttr(inputFile::String)
@@ -92,8 +89,9 @@ mutable struct costAttr
     fc = s["B17:CS27"]
     vc = s["B31:CS41"]
     es = s["B44:CS44"]
-    dc = s["E48:E58"]
-    new(cc, fc, vc, es, dc)
+    fc = s["B48:CS58"]
+    dc = s["E62:E72"]
+    new(cc, fc, vc, es, fc, dc)
     end
   end
 end
@@ -106,6 +104,8 @@ mutable struct invrAttr
   discountR::Float64
   #: Heat rate increase
   heatIncR::Float64
+  #: Loan period 
+  loanP::Int64
   function invrAttr(inputFile::String)
     XLSX.openxlsx(inputFile, mode="r") do xf
     println("The data has been assumed to be in page 2")
@@ -115,7 +115,8 @@ mutable struct invrAttr
     ci = s["D9:D19"]
     dr = s["B21"]
     hri = s["B22"]
-    new(sl, ci, dr, hri)
+    lp = s["B23"]
+    new(sl, ci, dr, hri, lp)
     end
   end
 end
