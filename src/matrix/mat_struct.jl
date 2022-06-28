@@ -106,6 +106,9 @@ mutable struct invrAttr
   heatIncR::Float64
   #: Loan period 
   loanP::Int64
+  #: Delay
+  delayZ::Vector{Int64}
+  delayX::Vector{Int64}
   function invrAttr(inputFile::String)
     XLSX.openxlsx(inputFile, mode="r") do xf
     println("The data has been assumed to be in page 2")
@@ -116,7 +119,8 @@ mutable struct invrAttr
     dr = s["B21"]
     hri = s["B22"]
     lp = s["B23"]
-    new(sl, ci, dr, hri, lp)
+    d = zeros(Int64, length(s))
+    new(sl, ci, dr, hri, lp, d, d)
     end
   end
 end

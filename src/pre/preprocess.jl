@@ -6,7 +6,7 @@
 #####
 # PREPROCESSING OF (SOME) COEFFICIENT MATRICES
 #####
-function preProcCoef(c::coef)
+function preProcCoef!(c::coef)
   #: CapC $/kW -> M$/GW
   #: fixC $/kW -> M$/GW
   #: varC $/MWh -> M$/GWh
@@ -21,7 +21,7 @@ function preProcCoef(c::coef)
   c.heatRx.*=(1e6/1e6)
 end
 
-function preProcAttr(a:attr)
+function preProcAttr!(a:attr)
   #: carbInt[=] kgCo2/MMBTU --> tCo2/MMBTU
   a.carbInt./=1e3
 end

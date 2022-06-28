@@ -12,6 +12,7 @@ module mid_s
     include("./matrix/read_mat.jl")
     include("./gestalt/gridForm.jl")
     include("./gestalt/modKern.jl")
+    include("./retrofit/retrof.jl")
     #include("./gestalt/form.jl")
     include("./mods/m4-3_modular.jl")
     #include("./coef/coef_custom.jl")
