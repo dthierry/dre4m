@@ -43,4 +43,5 @@ struct modData
   ta::timeAttr
   ca::costAttr
   ia::invrAttr
+  rff::retrofForm
 end

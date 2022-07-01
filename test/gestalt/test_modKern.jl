@@ -36,7 +36,25 @@ end
   ta = mid_s.timeAttr(file)
   ca = mid_s.costAttr(file)
   ia = mid_s.invrAttr(file)
-  m = mid_s.modData(ta, ca, ia)
+  function rf0(base, kind, time)
+    m = 1
+    b = kind
+    return (m, b)
+  end
+  fv = (b,k,t)->(3, b)
+  ff = (b,k,t)->(2, 4)
+  fh = (b,k,t)->(1, b)
+  fe = (b,k,t)->(2, b*2)
+  ff = (b,k,t)->(1, b*3)
+  
+  rf = mid_s.retrofForm(rf0, 
+                        fv, 
+                        ff, 
+                        fh, 
+                        fe, 
+                        ff)
+
+  m = mid_s.modData(ta, ca, ia, rf)
   @test true
 end
 
