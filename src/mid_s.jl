@@ -11,7 +11,7 @@ module mid_s
     include("./matrix/mat_struct.jl")
     include("./matrix/read_mat.jl")
     include("./gestalt/gridForm.jl")
-    include("./retrofit/retrof.jl")
+    include("./gestalt/retrof.jl")
     include("./gestalt/modKern.jl")
     #include("./gestalt/form.jl")
     include("./mods/m4-3_modular.jl")

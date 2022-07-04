@@ -40,6 +40,7 @@ end
 This is where I aggregate all the useful data for the model.
 """
 struct modData
+  f::aForm
   ta::timeAttr
   ca::costAttr
   ia::invrAttr

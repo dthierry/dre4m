@@ -21,7 +21,13 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
   Nx = mS.Nx
   Kz = mS.Kx
   Kx = mS.Kx
-  modData.ta
+  #
+  xDelay = mD.f.xDelay
+  fuelBased = mD.f.fuelBased
+  co2Based = mD.f.co2Based
+
+  maxDelay = maximum(values(xDelay))
+
   #: Model creation
   m = Model()
   #  open(fname*"_kinds.txt", "w") do file
@@ -498,17 +504,18 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
                    for k in 0:Kx[i]-1 
                    for j in 0:Nx[i, k]-1 if co2Based[i])
              )
-  @constraint(m, co2Budget,
-              sum(co2OverallYr[t] for t in 0:T-1)  <= 
-            (co22010 + co22050) * 0.5 * 41 - co2_2010_2015
-           )
+  #@constraint(m, co2Budget,
+  #            sum(co2OverallYr[t] for t in 0:T-1)  <= 
+  #          (co22010 + co22050) * 0.5 * 41 - co2_2010_2015
+  #         )
+
   #: retirement based on "old" age
   @constraint(m, wOldRetE[t=1:T-1, i=0:I-1],
               wOldRet[t, i] == 
               (
                 retCostW(mD, i, t, N[i]-1) +
                 #: no cap
-                365*24*saleLost(mD, kind, time age)
+                365*24*saleLost(mD, kind, time, age)
               ) * w[t, i, N[i]]
              )
 
@@ -646,7 +653,8 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
               termCx[i, k, j] == 
               # retCostW(mD, T-1, i, j) * 
               ( retCostW(mD, i, T-1, j) +
-              365*24*saleLost(mD, i, t, j) ) *
+                365*24*saleLost(mD, i, t, j) 
+              ) *
               X[T-1, i, k, j]
              )
 
@@ -656,8 +664,7 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
                 (
                 retCostW(mD, i, T-1, min(j, N[i]-1)) + 
                 365*24*saleLost(mD, i, t, j)
-                )
-              retCostW(mD, T-1, i, min(j, N[i]-1)) * Z[T-1, i, k, j]
+                ) * Z[T-1, i, k, j]
              )
 
   @constraint(m, termCost ==

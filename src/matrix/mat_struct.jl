@@ -119,7 +119,7 @@ mutable struct invrAttr
     dr = s["B21"]
     hri = s["B22"]
     lp = s["B23"]
-    d = zeros(Int64, length(s))
+    d = zeros(Int64, length(sl))
     new(sl, ci, dr, hri, lp, d, d)
     end
   end
