@@ -26,7 +26,7 @@ using Test
   ca = mid_s.costAttr(file)
   ia = mid_s.invrAttr(file)
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
-  function rf0(f, base, kind, time)
+  function rf0(base, kind, time)
     m = 1
     b = kind
     return (m, b)
@@ -34,15 +34,15 @@ using Test
   fv = (b,k,t)->(3, b)
   ff = (b,k,t)->(2, 4)
   fh = (b,k,t)->(1, b)
-  fe = (b,k,t)->(2, b*2)
-  ff = (b,k,t)->(1, b*3)
+  fe = (b,k,t)->(2, 2)
+  ffu = (b,k,t)->(1, 3)
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   rf = mid_s.retrofForm(rf0, 
                         fv, 
                         ff, 
                         fh, 
                         fe, 
-                        ff)
+                        ffu)
   # set data
   mD = mid_s.modData(gf, ta, ca, ia, rf)
   @test true

@@ -52,15 +52,15 @@ end
   fv = (b,k,t)->(3, b)
   ff = (b,k,t)->(2, 4)
   fh = (b,k,t)->(1, b)
-  fe = (b,k,t)->(2, b*2)
-  ff = (b,k,t)->(1, b*3)
+  fe = (b,k,t)->(2, 2)
+  ffu = (b,k,t)->(1, 3)
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   rf = mid_s.retrofForm(rf0, 
                         fv, 
                         ff, 
                         fh, 
                         fe, 
-                        ff)
+                        ffu)
 
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   m = mid_s.modData(gf, ta, ca, ia, rf)

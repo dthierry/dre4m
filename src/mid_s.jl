@@ -14,6 +14,6 @@ module mid_s
     include("./gestalt/retrof.jl")
     include("./gestalt/modKern.jl")
     #include("./gestalt/form.jl")
+    include("./coef/coef_custom.jl")
     include("./mods/m4-3_modular.jl")
-    #include("./coef/coef_custom.jl")
 end

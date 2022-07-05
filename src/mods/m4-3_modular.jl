@@ -25,9 +25,17 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
   xDelay = mD.f.xDelay
   fuelBased = mD.f.fuelBased
   co2Based = mD.f.co2Based
-
+  initCap = mD.ta.initCap
+  d = mD.ta.nachF
   maxDelay = maximum(values(xDelay))
-
+  cFactW = mD.ta.cFac
+  size_cf = size(cFactW)
+  #maxn = 
+  cFactZ = zeros((size_cf[1], size_cf[2], 1))
+  cFactX = zeros((size_cf[1], size_cf[2], 1))
+  #cFactZ = [for i=0:I-1  for j=0:N[i]-1]
+  #cFactZ = mD.ta.cFact
+  #cFactX = mD.ta.cFact
   #: Model creation
   m = Model()
   #  open(fname*"_kinds.txt", "w") do file
@@ -256,7 +264,7 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
   # don't allow new assets to be retired at 0
   @constraint(m,
               initial_w_E[i = 0:I-1, j = 0:N[i]-1],
-              w[0, i, j] == wij[i+1, j+1]
+              w[0, i, j] == initCap[i+1, j+1]
              )
   @constraint(m,
               initial_w_N[t = 1:T, i = 0:I-1],
@@ -343,22 +351,26 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
              )
   #: these are the hard questions
   @constraint(m, WgEq[t=0:T-1, i=0:I-1, j=0:N[i]-1], 
-              Wgen[t, i, j] == YrHr * cFactW[t, i, j]  * W[t, i, j]
+              Wgen[t, i, j] == yrHr * cFactW[i+1, j+1] * W[t, i, j]
               )
   @constraint(m, ZgEq[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, j=0:Nz[i, k]-1],
-              Zgen[t, i, k, j] == YrHr * cFactZ[t, i, k, j] * Z[t, i, k, j]
+              Zgen[t, i, k, j] == yrHr * cFactW[i+1, j+1] * Z[t, i, k, j]
               )
   @constraint(m, XgEq[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, j=0:Nx[i, k]-1],
-              Xgen[t, i, k, j] == YrHr * cFactX[t, i, k, j] * X[t, i, k, j]
+              Xgen[t, i, k, j] == yrHr * cFactW[i+1, j+1] * X[t, i, k, j]
               )
   #: Generation (GWh)
   @constraint(m, sGenEq[t = 1:T-1, i = 0:I-1],
             (
-            sum(Wp[t, i, j] for j in 0:N[i]-1) + 
-            sum(Zp[t, i, k, j] for j in 0:(Nz[i, k]-1) 
-            for k in 0:Kz[i]-1) +
-            sum(Xp[t, i, k, j] for j in 0:(Nx[i, k]-1) 
-            for k in 0:Kx[i]-1)
+            sum(Wgen[t, i, j] for j in 0:N[i]-1) + 
+            sum(Zgen[t, i, k, j] 
+              for k in 0:Kz[i]-1
+              for j in 0:(Nz[i, k]-1)
+            ) +
+            sum(Xgen[t, i, k, j] 
+              for k in 0:Kx[i]-1 
+              for j in 0:(Nx[i, k]-1)
+            )
             ) ==
             sGen[t, i]
             )
@@ -366,7 +378,7 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
   # Demand
   @constraint(m,
               dcCon[t = 1:T-1],
-              sum(sGen[t, i] for i in 0:I-1) >= d[(t, 0)]
+              sum(sGen[t, i] for i in 0:I-1) >= d[t+1]
              )
 
   # Trade in the values for actual generation. 
@@ -515,7 +527,7 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
               (
                 retCostW(mD, i, t, N[i]-1) +
                 #: no cap
-                365*24*saleLost(mD, kind, time, age)
+                365*24*saleLost(mD, i, t, N[i]-1)
               ) * w[t, i, N[i]]
              )
 
@@ -644,7 +656,9 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
   @constraint(m, termCwE[i=0:I-1, j=0:N[i]-1],
               termCw[i, j] == 
               #retCostW(mD, t, i, N[i]-1) 
-              (retCostW(mD, i, T-1, j) + 365*24*saleLost(mD, i, t, j))
+              (retCostW(mD, i, T-1, j) + 
+                365*24*saleLost(mD, i, T-1, j)
+              )
               * W[T-1, i, j] 
              )
 
@@ -653,7 +667,7 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
               termCx[i, k, j] == 
               # retCostW(mD, T-1, i, j) * 
               ( retCostW(mD, i, T-1, j) +
-                365*24*saleLost(mD, i, t, j) 
+                365*24*saleLost(mD, i, T-1, j) 
               ) *
               X[T-1, i, k, j]
              )
@@ -661,10 +675,10 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
   @constraint(m, termCzE[i=0:I-1, k=0:Kz[i]-1, 
                          j=0:Nz[i, k]-1],
               termCz[i, k, j] == 
-                (
+              (
                 retCostW(mD, i, T-1, min(j, N[i]-1)) + 
-                365*24*saleLost(mD, i, t, j)
-                ) * Z[T-1, i, k, j]
+                365*24*saleLost(mD, i, T-1, j)
+              ) * Z[T-1, i, k, j]
              )
 
   @constraint(m, termCost ==
@@ -680,17 +694,16 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
                     for k in 0:Kz[i]-1
                     for j in 1:Nz[i, k]-1)
              )
-
-  @constraint(m, windRatioI[t=1:T-1, i = 8:10],
-              sum(X[t, i, k, 0] 
-                 for k in 0:Kx[i]-1
-                )
-              == 
-              sum(X[t, windIdx, k, 0] * windRatio[i + 1]
-                  for k in 0:Kx[windIdx]-1
-                  ))
+  windIdx = 7
+  #windRatio = [1. for i in 1:I+10]
+  #@constraint(m, windRatI[t=1:T-1, i = 8:10],
+  #            sum(X[t, i, k, 0] for k in 0:Kx[i]-1)
+  #            == 
+  #            sum(X[t, windIdx, k, 0] * windRatio[i + 1]
+  #                for k in 0:Kx[windIdx]-1)
+  #            )
   #: only applied on new allocations
-
+  return m
 end
 
 
