@@ -48,7 +48,6 @@ mutable struct timeAttr
   heatRx::Array{Float64, 2} #: BTu/kWh
   function timeAttr(inputFile::String)
     XLSX.openxlsx(inputFile, mode="r") do xf
-    println("The data has been assumed to be in page 1")
     # set sheet
     s = xf["timeAttr"]
     # set arrays
@@ -81,7 +80,6 @@ mutable struct costAttr
   decomC::Array{Float64, 2}  #: $/MW
   function costAttr(inputFile::String)
     XLSX.openxlsx(inputFile, mode="r") do xf
-    println("The data has been assumed to be in page 1")
     # set sheet
     s = xf["costAttr"]
     # set arrays
@@ -97,7 +95,7 @@ mutable struct costAttr
 end
 
 mutable struct invrAttr
-  servLife::Array{Float64} #: yr
+  servLife::Vector{Int64} #: yr
   carbInt::Array{Float64} #: kgCO2/MMBTU
   # util_cfs = capacity_factors
   #: Discount rate
@@ -111,10 +109,10 @@ mutable struct invrAttr
   delayX::Vector{Int64}
   function invrAttr(inputFile::String)
     XLSX.openxlsx(inputFile, mode="r") do xf
-    println("The data has been assumed to be in page 2")
     # set sheet
     s = xf["invrAttr"]
     sl = s["C9:C19"]
+    sl = vec(sl)
     ci = s["D9:D19"]
     dr = s["B21"]
     hri = s["B22"]

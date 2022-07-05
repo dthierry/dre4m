@@ -5,32 +5,6 @@
 #  License.
 #############################################################################
 
-"""
-    retrofit(baseKind::Int64, kind::Int64, time::Int64)
-Returns the multiplier that modifies some of the coefficients of the base
-technology. 
-"""
-function retroFit(baseKind, kind, time)::Tuple(Float64, Int64)
-  multiplier = 1.
-  baseFuel = baseKind
-  if baseKind ∈ [0, 2] && kind == 0  #: carbon capture RF
-    multiplier = carbCapOandMfact[baseKind]
-  elseif baseKind ∈ [0, 2] && kind == 1  #: efficiencty RF
-    multiplier = 1.  #: cost is the same
-  elseif baseKind ∈ [1, 3, 4] && kind == 0 #: efficiency RF
-    multiplier = 1.
-  end
-  if baseKind == 0
-    if kind == 2  #: fuel-switch
-      baseFuel = 2
-    elseif kind == 3  #: fuel-switch
-      baseFuel = 4
-    end
-  end
-  return (mutiplier, baseFuel)
-end
-# thinking about this the retrofit could change a number of possible parameters
-# from the model, say for example the capital, fixed, variable costs
 
 # Operation and Maintenance (adjusted)
 # (existing)
@@ -127,7 +101,6 @@ function zCapCost(mD::modData,
   iA = mD.ia
   rfF = mD.rff
   #discount = discount already comes from source
-  
   #: evaluate retrofit
   r = rfF.rCap(baseKind, kind, time)
   (multiplier, baseFuel) = (1., baseKind)
@@ -251,7 +224,7 @@ end
 #: (retrofit)
 #: Carbon instance
 function carbonIntZ(mD::modData, 
-                    oaseKind::Int64, kind::Int64=-1)
+                    baseKind::Int64, kind::Int64=-1)
   tA = mD.ta
   iA = mD.ia
   rfF = mD.rff

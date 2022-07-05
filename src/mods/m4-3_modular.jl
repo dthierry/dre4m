@@ -1,4 +1,4 @@
-# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80
+#vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
 #############################################################################
 #  Copyright 2022, David Thierry, and contributors
 #  This Source Code Form is subject to the terms of the MIT
@@ -6,7 +6,6 @@
 #############################################################################
 
 using JuMP
-import Dates
 
 """
     genModel(mS::modSets, modData::modData)::JuMP.Model
@@ -19,7 +18,7 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
   N = mS.N
   Nz = mS.Nz
   Nx = mS.Nx
-  Kz = mS.Kx
+  Kz = mS.Kz
   Kx = mS.Kx
   #
   xDelay = mD.f.xDelay
@@ -30,12 +29,12 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
   maxDelay = maximum(values(xDelay))
   cFactW = mD.ta.cFac
   size_cf = size(cFactW)
-  #maxn = 
   cFactZ = zeros((size_cf[1], size_cf[2], 1))
   cFactX = zeros((size_cf[1], size_cf[2], 1))
   #cFactZ = [for i=0:I-1  for j=0:N[i]-1]
   #cFactZ = mD.ta.cFact
   #cFactX = mD.ta.cFact
+  
   #: Model creation
   m = Model()
   #  open(fname*"_kinds.txt", "w") do file
@@ -49,8 +48,6 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
   #    end
   #  end
   ##
-  #@info("The budget: $((co22010 + co22050) * 0.5 * 41 - co2_2010_2015)")
-  #: Last term is a trapezoid minus the 2010-2015 gap
 
   # Variables
   # this goes to N just because we need to constrain z at N-1
@@ -285,14 +282,12 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
               z[t, i, k, 0] == 0
              )
 
-
   # Zero out all the initial condition of the retrofits 
   @constraint(m,
               ic_zE[i=0:I-1, k=0:Kz[i]-1, 
                     j=0:Nz[i, k]-1],
               z[0, i, k, j] == 0
              )
-
 
   # No retrofit at the end of life of the original plant
   #@constraint(m,
@@ -423,7 +418,6 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
               xE[t, i, k, j] == heat_x[t, i, k, j] * carbonIntW(mD, i)
   )
 
-
   @constraint(m, xOcapE[t=0:T-1, i=0:I-1],
               xOcap[t, i] == sum(
                                  xCapCost(mD, i, t) * x[t, i, k, 0]
@@ -516,10 +510,6 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
                    for k in 0:Kx[i]-1 
                    for j in 0:Nx[i, k]-1 if co2Based[i])
              )
-  #@constraint(m, co2Budget,
-  #            sum(co2OverallYr[t] for t in 0:T-1)  <= 
-  #          (co22010 + co22050) * 0.5 * 41 - co2_2010_2015
-  #         )
 
   #: retirement based on "old" age
   @constraint(m, wOldRetE[t=1:T-1, i=0:I-1],
@@ -539,7 +529,6 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
                 365*24*saleLost(mD, i, t, N[i]-1)
               ) * z[t, i, k, Nz[i, k]]
              )
-
 
   @constraint(m, xOldRetE[t=1:T-1, i=0:I-1, k=0:Kx[i]-1],
               xOldRet[t, i, k] == 
@@ -694,15 +683,6 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
                     for k in 0:Kz[i]-1
                     for j in 1:Nz[i, k]-1)
              )
-  windIdx = 7
-  #windRatio = [1. for i in 1:I+10]
-  #@constraint(m, windRatI[t=1:T-1, i = 8:10],
-  #            sum(X[t, i, k, 0] for k in 0:Kx[i]-1)
-  #            == 
-  #            sum(X[t, windIdx, k, 0] * windRatio[i + 1]
-  #                for k in 0:Kx[windIdx]-1)
-  #            )
-  #: only applied on new allocations
   return m
 end
 
@@ -731,8 +711,16 @@ function genObj!(m::JuMP.Model, mS::modSets, mD::modData)
             )
 end
 
-function fixDelayed0(m::JuMP.Model)
+"""
+    fixDelayed0()
+Fix the variables at times less than -1.
+"""
+function fixDelayed0!(m::JuMP.Model, mS::modSets, mD::modData)
   x = m[:x]
+  I = mS.I
+  Kx = mS.Kx
+  xDelay = mD.f.xDelay
+  #: find the maximum delay
   maxDelay = maximum(values(xDelay))
   for t in -maxDelay:-1
     for i in 0:I-1
@@ -742,4 +730,78 @@ function fixDelayed0(m::JuMP.Model)
     end
   end
 end
-#
+
+
+"""
+  gridConWind()
+Add the wind ratio constraint for new techs.
+"""
+function gridConWind!(
+          m::JuMP.Model, 
+          mS::modSets, 
+          baseIdx::Int64,
+          specIdx::Vector{Int64}, 
+          specRatio::Vector{Float64}
+          )
+  X = m[:X]
+  T = mS.T
+  Kx = mS.Kx
+  windIdx = baseIdx #: sometimes 7
+  windRatio = specIdx 
+  #: only applied on new allocations
+  @constraint(m, windRatI[t=1:T-1, i in indeXes],
+              sum(X[t, i, k, 0] for k in 0:Kx[i]-1)
+              == 
+              sum(X[t, windIdx, k, 0] * windRatio[i + 1]
+                  for k in 0:Kx[windIdx]-1)
+  )
+end
+
+"""
+    gridConBudget(m::JuMP.Model, mS::modSets)
+Add the co2 budget constraint.
+"""
+function gridConBudget!(
+          m::JuMP.Model, 
+          mS::modSets)
+  #: raison d'être
+  X = m[:X]
+  T = mS.T
+  #: magic numbers
+  co22010 = 2.2584E+09
+  co2_2010_2015 = 10515700000.0
+  co22015 = co22010 - co2_2010_2015
+  co22050 = co22010 * 0.29
+  #: Last term is a trapezoid minus the 2010-2015 gap
+  @info("The budget: $((co22010 + co22050) * 0.5 * 41 - co2_2010_2015)")
+  co2OverallYr = m[:co2OverallYr]
+  @constraint(m, co2Budget,
+    sum(co2OverallYr[t] for t in 0:T-1) <= (co22010 + co22050) * 0.5 * 41 - 
+    co2_2010_2015
+  )
+end
+
+
+
+function gridConUppahBound(
+    m::JuMP.Model, 
+    mS::modSets)
+    # Upper bound on some new techs
+    upperBoundDict = Dict(
+                          "B" => 1000/1e3 * 0.59, 
+                          "N" => 1000/1e3 * 0.898, 
+                          "H" => 1000/1e3 * 0.42)
+    #: Just do it directly using bounds on the damn variables
+    for tech in keys(upperBoundDict)
+      id = techToId[tech]
+      for t in 1:T-1
+        for k in 0:Kx[id]-1
+          #for j in 0:Nx[id, k]
+          set_upper_bound(x[t, id, k, 0], upperBoundDict[tech])
+          #end
+        end
+      end
+    end
+end
+
+

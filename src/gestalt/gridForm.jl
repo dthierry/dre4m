@@ -13,9 +13,9 @@ Data strucure that contains the structural information of the retrofits, new
 """
 struct gridForm <: aForm
   #: kinds of retrofit for technology I
-  kinds_x::Vector{Int32}
+  kinds_x::Vector{Int64}
   #: kinds of new plants for technology I
-  kinds_z::Vector{Int32}
+  kinds_z::Vector{Int64}
   #: delay for the new plants
   xDelay::Dict
   #: delay for the retrofits
