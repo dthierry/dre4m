@@ -694,7 +694,7 @@ Generates the objective function.
 function genObj!(m::JuMP.Model, mS::modSets, mD::modData)
   @info "Setting objective.."
   xOcap = m[:xOcap]
-  co2OverallYr = m[:co2Overall]
+  npv = m[:npv]
   termCost = m[:termCost]
 
   @objective(m, Min, (npv
@@ -740,19 +740,19 @@ function gridConWind!(
           m::JuMP.Model, 
           mS::modSets, 
           baseIdx::Int64,
-          specIdx::Vector{Int64}, 
-          specRatio::Vector{Float64}
+          specRatio::Dict{Int64, Float64}
           )
   X = m[:X]
   T = mS.T
   Kx = mS.Kx
   windIdx = baseIdx #: sometimes 7
-  windRatio = specIdx 
+  windRatio = specRatio 
+  specIdx = keys(specRatio)
   #: only applied on new allocations
-  @constraint(m, windRatI[t=1:T-1, i in indeXes],
+  @constraint(m, windRatI[t=1:T-1, i in specIdx],
               sum(X[t, i, k, 0] for k in 0:Kx[i]-1)
               == 
-              sum(X[t, windIdx, k, 0] * windRatio[i + 1]
+              sum(X[t, windIdx, k, 0] * windRatio[i]
                   for k in 0:Kx[windIdx]-1)
   )
 end
@@ -783,25 +783,43 @@ end
 
 
 
-function gridConUppahBound(
-    m::JuMP.Model, 
-    mS::modSets)
-    # Upper bound on some new techs
-    upperBoundDict = Dict(
-                          "B" => 1000/1e3 * 0.59, 
-                          "N" => 1000/1e3 * 0.898, 
-                          "H" => 1000/1e3 * 0.42)
-    #: Just do it directly using bounds on the damn variables
-    for tech in keys(upperBoundDict)
-      id = techToId[tech]
-      for t in 1:T-1
-        for k in 0:Kx[id]-1
-          #for j in 0:Nx[id, k]
-          set_upper_bound(x[t, id, k, 0], upperBoundDict[tech])
-          #end
-        end
+function gridConUppahBound!(m::JuMP.Model, mS::modSets)
+  techToId = Dict()
+  techToId["PC"] = 0
+  techToId["NGCT"] = 1
+  techToId["NGCC"] = 2
+  techToId["P"] = 3
+  techToId["B"] = 4
+  techToId["N"] = 5
+  techToId["H"] = 6
+  techToId["W"] = 7
+  techToId["SPV"] = 8
+  techToId["STH"] = 9
+  techToId["G"] = 10
+  # Upper bound on some new techs
+  T = mS.T
+  I = mS.I
+  N = mS.N
+  Nz = mS.Nz
+  Nx = mS.Nx
+  Kz = mS.Kz
+  Kx = mS.Kx
+  x = m[:x]
+  upperBoundDict = Dict(
+                        "B" => 1000/1e3 * 0.59, 
+                        "N" => 1000/1e3 * 0.898, 
+                        "H" => 1000/1e3 * 0.42)
+  #: Just do it directly using bounds on the damn variables
+  for tech in keys(upperBoundDict)
+    id = techToId[tech]
+    for t in 1:T-1
+      for k in 0:Kx[id]-1
+        #for j in 0:Nx[id, k]
+        set_upper_bound(x[t, id, k, 0], upperBoundDict[tech])
+        #end
       end
     end
+  end
 end
 
 

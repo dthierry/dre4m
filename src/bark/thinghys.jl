@@ -19,7 +19,7 @@ techToId["STH"] = 9
 techToId["G"] = 10
 I = 11
 
-xDelay = Dict([i => 0 for i in 0:I-1])
+xDelay = Dict(i => 0 for i in 0:I-1)
 xDelay[techToId["PC"]] = 5
 xDelay[techToId["NGCT"]] = 4
 xDelay[techToId["NGCC"]] = 4

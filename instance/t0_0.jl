@@ -5,19 +5,18 @@
 #  License.
 #############################################################################
 #
+import Clp
+Clp.Clp_Version()
+
 using mid_s
-using Test
+using JuMP
+include("../src/bark/thinghys.jl")
 
-include("../../src/bark/thinghys.jl")
-
-@testset "foreals" begin
+function main()
   file = "/Users/dthierry/Projects/mid-s/data/cap_mw.xlsx"
-  T = 10
+  T = 25
   gf = mid_s.gridForm(I)
   # Set arbitrary (new) tech for subprocess i
-  @test length(gf.kinds_x) == I
-  @test length(kinds_z) == length(gf.kinds_x)
-  @test length(kinds_x) == length(gf.kinds_z)
   for i in 1:I
     gf.kinds_x[i] = kinds_x[i]
     gf.kinds_z[i] = kinds_z[i]
@@ -29,8 +28,6 @@ include("../../src/bark/thinghys.jl")
   ia = mid_s.invrAttr(file)
   #
   sl = ia.servLife
-  @test typeof(sl) == Vector{Int64}
-  @test length(sl) == I
   si = 0.2 # twenty percent service life increase
   # setup sets
   mS = mid_s.modSets(T, I, gf, sl, si)
@@ -44,15 +41,21 @@ include("../../src/bark/thinghys.jl")
                         rfFuGrd)
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   mD = mid_s.modData(gf, ta, ca, ia, rf)
+  mid_s.preProcCoef!(mD)
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   mod = mid_s.genModel(mS, mD) 
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
-  X = mod[:X]
-
-  #@test length(X) == T * I * sum(mS.Kx[i] for i in 0:I-1) * 
-  #      sum(mS.Nx[(i,k)] for i in 0:I-1 for k in 0:mS.Kx[i]-1)
   mid_s.genObj!(mod, mS, mD)
   mid_s.fixDelayed0!(mod, mS, mD)
-  mid_s.gridConWind!(mod, mS, 7, Dict(8=>0.1, 9=>0.1))
+  mid_s.gridConWind!(mod, mS, 7, Dict(8=>0.25, 9=>0.25, 10=>0.03))
   mid_s.gridConUppahBound!(mod, mS)
+  set_optimizer(mod, Clp.Optimizer)
+  optimize!(mod)
+  mid_s.writeRes(mod, mS, mD, "henlo")
+  return mod
+end
+
+
+if abspath(PROGRAM_FILE) == @__FILE__
+  m = main()
 end
