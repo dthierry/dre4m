@@ -11,6 +11,11 @@ using Test
 include("../../src/bark/thinghys.jl")
 
 @testset "foreals" begin
+  pr = mid_s.prJrnl()
+  jrnl = mid_s.j_start
+  pr.caller = @__FILE__
+  mid_s.jrnlst!(pr, jrnl)
+  
   file = "/Users/dthierry/Projects/mid-s/data/cap_mw.xlsx"
   T = 10
   gf = mid_s.gridForm(I)
@@ -33,7 +38,7 @@ include("../../src/bark/thinghys.jl")
   @test length(sl) == I
   si = 0.2 # twenty percent service life increase
   # setup sets
-  mS = mid_s.modSets(T, I, gf, sl, si)
+  mS = mid_s.modSets(T, I, gf, sl, [si for j in 1:I])
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   # setup retrofitform
   rf = mid_s.retrofForm(rfCaGrd,
@@ -45,7 +50,7 @@ include("../../src/bark/thinghys.jl")
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   mD = mid_s.modData(gf, ta, ca, ia, rf)
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
-  mod = mid_s.genModel(mS, mD) 
+  mod = mid_s.genModel(mS, mD, pr) 
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   X = mod[:X]
 

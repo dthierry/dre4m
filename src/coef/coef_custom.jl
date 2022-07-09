@@ -13,14 +13,14 @@ function wFixCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GW
   #: We could change this with the age as well.
   cA = mD.ca
   iA = mD.ia
-  discount = 1/((1. +iA.discountR)^time)
+  discount = 1/((1.e0 +iA.discountR)^time)
   return cA.fixC[baseKind+1, time+1]*discount
 end
 function wVarCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GWh
   #: Based on generation.
   cA = mD.ca
   iA = mD.ia
-  discount = 1/((1. +iA.discountR)^time)
+  discount = 1/((1.e0 +iA.discountR)^time)
   return cA.varC[baseKind+1, time+1]*discount
 end
 
@@ -28,7 +28,7 @@ function xCapCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GW
   #: Based on capacity.
   cA = mD.ca
   iA = mD.ia
-  discount = 1/((1. +iA.discountR)^time)
+  discount = 1/((1.e0 +iA.discountR)^time)
   return cA.capC[baseKind+1, time+1]*discount
 end
 
@@ -37,14 +37,14 @@ function xFixCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GW
   #: We could change this with the age as well.
   cA = mD.ca
   iA = mD.ia
-  discount = 1/((1. +iA.discountR)^time)
+  discount = 1/((1.e0 +iA.discountR)^time)
   return cA.fixC[baseKind+1, time+1]*discount
 end
 function xVarCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GWh
   #: Based on generation.
   cA = mD.ca
   iA = mD.ia
-  discount = 1/((1. +iA.discountR)^time)
+  discount = 1/((1.e0 +iA.discountR)^time)
   return cA.varC[baseKind+1, time+1]*discount
 end
 
@@ -57,11 +57,11 @@ function zFixCost(mD::modData,
   cA = mD.ca
   iA = mD.ia
   rfF = mD.rff
-  discount = 1/((1. +iA.discountR)^time)
+  discount = 1/((1.e0 +iA.discountR)^time)
 
   #: evaluate retrofit
   r = rfF.rFix(baseKind, kind, time)
-  (multiplier, baseFuel) = (1., baseKind)
+  (multiplier, baseFuel) = (1.e0, baseKind)
   if typeof(r) != nothing
     (multiplier, baseFuel) = r
   end
@@ -78,11 +78,11 @@ function zVarCost(mD::modData,
   cA = mD.ca
   iA = mD.ia
   rfF = mD.rff
-  discount = 1/((1. +iA.discountR)^time)
+  discount = 1/((1.e0 +iA.discountR)^time)
   
   #: evaluate retrofit
   r = rfF.rVar(baseKind, kind, time)
-  (multiplier, baseFuel) = (1., baseKind)
+  (multiplier, baseFuel) = (1.e0, baseKind)
   if typeof(r) != nothing
     (multiplier, baseFuel) = r
   end
@@ -103,7 +103,7 @@ function zCapCost(mD::modData,
   #discount = discount already comes from source
   #: evaluate retrofit
   r = rfF.rCap(baseKind, kind, time)
-  (multiplier, baseFuel) = (1., baseKind)
+  (multiplier, baseFuel) = (1.e0, baseKind)
   if typeof(r) != nothing
     (multiplier, baseFuel) = r
   end
@@ -122,7 +122,7 @@ function retCostW(mD::modData, kind::Int64, time::Int64, age::Int64)
   #: M$/GW
   cA = mD.ca
   iA = mD.ia
-  discount = 1/((1. +iA.discountR)^time)
+  discount = 1/((1.e0 +iA.discountR)^time)
   # baseAge = time - age > 0 ? time - age: 0.
   baseAge = max(time - age, 0)
   #: Loan liability
@@ -138,7 +138,7 @@ function saleLost(mD::modData, kind::Int64, time::Int64, age::Int64)
   #: M$/GWh
   cA = mD.ca
   iA = mD.ia
-  discount = 1/((1. +iA.discountR)^time)
+  discount = 1/((1.e0 +iA.discountR)^time)
   effSrvLf = max(iA.servLife[kind+1] - age, 0)
   #: we need the corresponding capacity factor afterwrds
   lostRev = effSrvLf*cA.elecSaleC[time+1] * discount
@@ -156,7 +156,7 @@ function heatRateW(mD::modData, kind::Int64, age::Int64,
   else
     baseAge = age - time
     baseAge = min(maxBase, baseAge)
-    return tA.heatRw[kind+1, baseAge+1] * (1. +iA.heatIncR)^time
+    return tA.heatRw[kind+1, baseAge+1] * (1.e0 +iA.heatIncR)^time
   end
 end
 
@@ -172,7 +172,7 @@ function heatRateZ(mD::modData, baseKind::Int64, kind::Int64,
   else
     #: evaluate retrofit
     r = rfF.rHtr(baseKind, kind, time)
-    (multiplier, baseFuel) = (1., baseKind)
+    (multiplier, baseFuel) = (1.e0, baseKind)
     if typeof(r) != nothing
       (multiplier, baseFuel) = r
     end
@@ -180,7 +180,7 @@ function heatRateZ(mD::modData, baseKind::Int64, kind::Int64,
     #? fuelKind
     baseAge = age - time
     baseAge = min(maxBase, baseAge)
-    heatrate = (tA.heatRw[baseFuel+1, baseAge+1]*(1. +iA.heatIncR)^time)
+    heatrate = (tA.heatRw[baseFuel+1, baseAge+1]*(1.e0 +iA.heatIncR)^time)
       return heatrate * multiplier
   end
 end
@@ -204,7 +204,7 @@ end
 function carbonIntW(mD::modData, baseKind::Int64, kind::Int64=-1)
   tA = mD.ta
   iA = md.ia
-  (multiplier, baseFuel) = (1., baseKind)
+  (multiplier, baseFuel) = (1.e0, baseKind)
   #:
   return iA.carbInt[baseFuel+1] * multiplier
 end
@@ -215,8 +215,8 @@ function fuelCostW(mD::modData, baseKind::Int64,
   tA = mD.ta
   cA = mD.ca
   iA = md.ia
-  discount = 1/((1. +iA.discountR)^time)
-  (multiplier, baseFuel) = (1., baseKind)
+  discount = 1/((1.e0 +iA.discountR)^time)
+  (multiplier, baseFuel) = (1.e0, baseKind)
   return cA.fuelC[baseFuel+1, time+1]*discount 
 end
 
@@ -231,7 +231,7 @@ function carbonIntZ(mD::modData,
 
   #: evaluate retrofit
   r = rfF.rCo(baseKind, kind, time)
-  (multiplier, baseFuel) = (1., baseKind)
+  (multiplier, baseFuel) = (1.e0, baseKind)
   if typeof(r) != nothing
     (multiplier, baseFuel) = r
   end
@@ -247,11 +247,11 @@ function fuelCostZ(mD::modData,
   iA = mD.ia
   rfF = mD.rff
 
-  discount = 1/((1. +iA.discountR)^time)
+  discount = 1/((1.e0 +iA.discountR)^time)
 
   #: evaluate retrofit
   r = rfF.rFuel(baseKind, kind, time)
-  (multiplier, baseFuel) = (1., baseKind)
+  (multiplier, baseFuel) = (1.e0, baseKind)
   if typeof(r) != nothing
     (multiplier, baseFuel) = r
   end

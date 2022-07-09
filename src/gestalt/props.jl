@@ -1,27 +1,55 @@
+# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80
+#############################################################################
+#  Copyright 2022, David Thierry, and contributors
+#  This Source Code Form is subject to the terms of the MIT
+#  License.
+#############################################################################
 import Dates
 
-mutable struct prop
+mutable struct prJrnl
   initT::Dates.DateTime
+  finalT::Dates.DateTime
+  fname::String
+  caller::String
+  count::Int32
+  function prJrnl()
+    it = Dates.now()
+    ft = Dates.now()
+    f = "UNASSIGNED"
+    new(it, ft, f, f, 0)
+  end
 end
 
-@enum jrnlMode j_start j_step j_finish
+@enum jrnlMode j_start j_log_f j_finish
 
-function jrnlst(jMode::jrnlMode)
+function jrnlst!(pr::prJrnl, jMode::jrnlMode)
+  fname = pr.fname
   if jMode == j_start
     @info "log in some data"
     initialTime = Dates.now()  # to log the results, I guess
-    fname0 = Dates.format(initialTime, "eyymmdd-HHMMSS")
-    fname = fname0  # copy name
+    pr.initT = initialTime
+    fname = Dates.format(initialTime, "eyymmdd-HHMMSS")
     @info("Started\t$(initialTime)\n")
     @info("Out files:\t$(fname)\n")
     mkdir(fname)
     fname = "./"*fname*"/"*fname
-    run(pipeline(`echo $(@__FILE__)`, stdout=fname*"_.out"))
-    run(pipeline(`cat $(@__FILE__)`, stdout=fname*"_.out", append=true))
-      elseif jMode == j_step
-    @info "log in some step info"
-  else
-    @info "done"
+    pr.fname = fname
+    refFile = pr.caller
+    run(pipeline(`echo $(refFile)`,
+        stdout=fname*"_$(pr.count).out"))
+    run(pipeline(`cat $(refFile)`, 
+        stdout=fname*"_$(pr.count).out", append=true))
+    @info "Caller $(refFile)"
+  elseif jMode == j_log_f
+    pr.finalT = Dates.now()
+    @info "Logged @ $(pr.finalT - pr.initT)"
+    refFile = pr.caller
+    run(pipeline(`echo $(refFile)`,
+        stdout=fname*"_$(pr.count).out"))
+    run(pipeline(`cat $(refFile)`, 
+        stdout=fname*"_$(pr.count).out", append=true))
+    @info "Caller $(refFile)"
   end
+  pr.count += 1
 end
 

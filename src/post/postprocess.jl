@@ -7,8 +7,9 @@
 using XLSX
 using JuMP
 using Dates
-function writeRes(m::JuMP.Model, mS::modSets, mD::modData, 
-                  fname::AbstractString)
+function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
+                  )
+  fname = pr.fname
   T = mS.T
   I = mS.I
   N = mS.N
@@ -318,8 +319,7 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData,
     sheet["B4"] = sum(value(wRet[i, j]) for i in 0:I-1 for j in 1:N[i]-1) + sum(value(zRet[i, k, j])  for i in 0:I-1 for k in 0:Kz[i]-1 for j in 1:Nz[(i, k)]-1) + sum(value(xRet[i, k, j]) for i in 0:I-1 for k in 0:Kx[i]-1 for j in 1:Nx[(i, k)]-1)
     sheet["B5"] = value(termCost)
     sheet["B6"] = sum(value(co2OverallYr[t]) for t in 0:T-1)
-    initialTime = Dates.now()  # to log the results, I guess
-    fname0 = Dates.format(initialTime, "eyymmdd-HHMMSS")
+    fname0 = Dates.format(pr.initT, "eyymmdd-HHMMSS")
     sheet["B7"] = fname0
   end
   shl = 0

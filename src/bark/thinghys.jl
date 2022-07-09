@@ -109,14 +109,14 @@ cCcapCfact = Dict(
                 2 => 1.047898338
                 )
 function rfCaGrd(baseKind, kind, time)::Tuple{Float64, Int64}
-  multiplier = 1.
+  multiplier = 1.e0
   baseFuel = baseKind
   if baseKind ∈ [0, 2] && kind == 0  #: carbon capture RF
     multiplier = cCcapCfact[baseKind]
   elseif baseKind ∈ [0, 2] && kind == 1  #: efficiencty RF
-    multiplier = 1.  #: cost is the same
+    multiplier = 1.e0  #: cost is the same
   elseif baseKind ∈ [1, 3, 4] && kind == 0 #: efficiency RF
-    multiplier = 1.
+    multiplier = 1.e0
   end
   if baseKind == 0
     if kind == 2  #: fuel-switch
@@ -144,7 +144,7 @@ function rfOnMgrd(baseKind, kind, time)::Tuple{Float64, Int64}
   elseif baseKind ∈ [0, 2] && kind == 1  #: efficiencty RF
     multiplier = 1.  #: cost is the same
   elseif baseKind ∈ [1, 3, 4] && kind == 0 #: efficiency RF
-    multiplier = 1.
+    multiplier = 1.e0
   end
   if baseKind == 0
     if kind == 2  #: fuel-switch

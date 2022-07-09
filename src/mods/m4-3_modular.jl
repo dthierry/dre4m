@@ -11,7 +11,7 @@ using JuMP
     genModel(mS::modSets, modData::modData)::JuMP.Model
 Generates model with variables and constraints.
 """
-function genModel(mS::modSets, mD::modData)::JuMP.Model
+function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   #: Initial sets
   T = mS.T
   I = mS.I
@@ -34,7 +34,11 @@ function genModel(mS::modSets, mD::modData)::JuMP.Model
   #cFactZ = [for i=0:I-1  for j=0:N[i]-1]
   #cFactZ = mD.ta.cFact
   #cFactX = mD.ta.cFact
-  
+   
+  jrnl = j_log_f
+  pr.caller = @__FILE__
+  jrnlst!(pr, jrnl)
+
   #: Model creation
   m = Model()
   #  open(fname*"_kinds.txt", "w") do file

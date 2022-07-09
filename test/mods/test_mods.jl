@@ -8,6 +8,11 @@ using mid_s
 using Test
 
 @testset "model testing" begin
+  pr = mid_s.prJnl()
+  jrnl = mid_s.j_start
+  pr.caller = @__FILE__
+  mid_s.jrnlst!(pr, jrnl)
+  
   file = "/Users/dthierry/Projects/mid-s/data/cap_mw.xlsx"
   # set form
   T = 5
@@ -46,7 +51,7 @@ using Test
   # set data
   mD = mid_s.modData(gf, ta, ca, ia, rf)
   @test true
-  mod = mid_s.genModel(mS, mD)
+  mod = mid_s.genModel(mS, mD, pr)
   @test true
 end
 

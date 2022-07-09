@@ -21,14 +21,14 @@ struct modSets
   Nx::Dict{Tuple{Int64, Int64}, Int64}
   function modSets(T::Int64, I::Int64, 
                    f::aForm, 
-                   servLife::Vector{Int64}, sLfIncr::Float64)
+                   servLife::Vector{Int64}, sLfIncr::Vector{Float64})
     kinds_z = f.kinds_z
     kinds_x = f.kinds_x
 
     Kz = Dict(i => kinds_z[i+1] for i in 0:I-1)
     Kx = Dict(i => kinds_x[i+1] for i in 0:I-1)
     N = Dict(i => servLife[i+1] for i in 0:I-1)
-    Nz = Dict((i,k) => N[i] + floor(Int, servLife[i+1]*sLfIncr) 
+    Nz = Dict((i,k) => N[i] + floor(Int, servLife[i+1]*sLfIncr[i+1]) 
             for i in 0:I-1 for k in 0:Kz[i]-1)
     Nx = Dict((i,k) => servLife[i+1] for i in 0:I-1 for k in 0:Kx[i]-1)
     new(T, I, Kz, Kx, N, Nz, Nx)

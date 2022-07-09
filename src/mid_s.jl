@@ -8,6 +8,7 @@
 module mid_s
   include("./bark/bark.jl")
   include("./matrix/mat_struct.jl")
+  include("./gestalt/props.jl")
   include("./gestalt/gridForm.jl")
   include("./gestalt/retrof.jl")
   include("./gestalt/modKern.jl")
