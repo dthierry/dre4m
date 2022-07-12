@@ -173,7 +173,7 @@ function rfHtrGrd(baseKind, kind, time)::Tuple{Float64, Int64}
       baseFuel = 4
     end
   end
-  return (mutiplier, baseFuel)
+  return (multiplier, baseFuel)
 end
 
 function rfCoGrd(baseKind, kind, time)::Tuple{Float64, Int64}
@@ -189,7 +189,7 @@ function rfCoGrd(baseKind, kind, time)::Tuple{Float64, Int64}
       baseFuel = 4
     end
   end
-  return (mutiplier, baseFuel)
+  return (multiplier, baseFuel)
 end
 
 function rfFuGrd(baseKind, kind, time)::Tuple{Float64, Int64}

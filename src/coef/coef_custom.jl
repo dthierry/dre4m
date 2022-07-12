@@ -150,13 +150,13 @@ end
 function heatRateW(mD::modData, kind::Int64, age::Int64, 
                     time::Int64, maxBase::Int64)
   tA = mD.ta
-  iA = md.ia
+  iA = mD.ia
   if age < time # this case does not exists
     return 0
   else
     baseAge = age - time
     baseAge = min(maxBase, baseAge)
-    return tA.heatRw[kind+1, baseAge+1] * (1.e0 +iA.heatIncR)^time
+    return tA.heatRw[kind+1, baseAge+1]*(1.e0+iA.heatIncR)^time
   end
 end
 
@@ -165,8 +165,8 @@ end
 function heatRateZ(mD::modData, baseKind::Int64, kind::Int64, 
                    age::Int64, time::Int64, maxBase::Int64)
   tA = mD.ta
-  iA = md.ia
-  rfF = md.rff
+  iA = mD.ia
+  rfF = mD.rff
   if age < time # this case does not exists
     return 0
   else
@@ -189,21 +189,22 @@ end
 function heatRateX(mD::modData, baseKind::Int64, kind::Int64, 
                    age::Int64, time::Int64)
   tA = mD.ta
-  iA = md.ia
+  iA = mD.ia
+  xDelay = mD.f.xDelay
   if time < age
     return 0
   end
   baseTime = time - age # simple as.
   baseTime = max(baseTime - xDelay[baseKind], 0) 
   #but actually if it's less than 0 just take 0
-  return tA.heatRx[baseKind+1, baseTime+1] * (1 + heatIncreaseRate) ^ time
+  return tA.heatRx[baseKind+1, baseTime+1]*(1.e0+iA.heatIncR)^time
 end
 
 #: (retrofit)
 #: Carbon instance
 function carbonIntW(mD::modData, baseKind::Int64, kind::Int64=-1)
   tA = mD.ta
-  iA = md.ia
+  iA = mD.ia
   (multiplier, baseFuel) = (1.e0, baseKind)
   #:
   return iA.carbInt[baseFuel+1] * multiplier
@@ -214,7 +215,7 @@ function fuelCostW(mD::modData, baseKind::Int64,
                    time::Int64, kind::Int64=-1)
   tA = mD.ta
   cA = mD.ca
-  iA = md.ia
+  iA = mD.ia
   discount = 1/((1.e0 +iA.discountR)^time)
   (multiplier, baseFuel) = (1.e0, baseKind)
   return cA.fuelC[baseFuel+1, time+1]*discount 

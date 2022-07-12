@@ -57,6 +57,23 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
   zOcap = m[:zOcap]
   xOcap = m[:xOcap]
 
+  kinds_z = mD.f.kinds_z
+  kinds_x = mD.f.kinds_x
+
+  open(fname*"_kinds.txt", "w") do file
+    write(file, "kinds_z\n")
+    for i in 0:I-1
+      write(file, "$(kinds_z[i+1])\n")
+    end
+    write(file, "kinds_x\n")
+    for i in 0:I-1
+      write(file, "$(kinds_x[i+1])\n")
+    end
+  end
+
+
+
+
   XLSX.openxlsx(fname*"_stocks.xlsx", mode="w") do xf
     sh = 0
     for i in 0:I-1

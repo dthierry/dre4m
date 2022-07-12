@@ -24,8 +24,20 @@ function main()
   for i in 1:I
     gf.kinds_x[i] = kinds_x[i]
     gf.kinds_z[i] = kinds_z[i]
-    gf.xDelay[i-1] = xDelay[i-1]
+    gf.xDelay[i-1] = 0 # xDelay[i-1]
   end
+  gf.co2Based[0] = true  # PC
+  gf.co2Based[1] = true  # NGCT
+  gf.co2Based[2] = true  # NGCC
+  gf.co2Based[3] = true  # P
+  gf.co2Based[4] = true  # B
+
+  gf.fuelBased[0] = true  # PC
+  gf.fuelBased[1] = true  # NGCT
+  gf.fuelBased[2] = true  # NGCC
+  gf.fuelBased[3] = true  # P
+  gf.fuelBased[4] = true  # B
+  gf.fuelBased[5] = true  # N
   # set retrofit form
   ta = mid_s.timeAttr(file)
   ca = mid_s.costAttr(file)
@@ -56,13 +68,16 @@ function main()
   mod = mid_s.genModel(mS, mD, pr) 
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   mid_s.genObj!(mod, mS, mD)
+  ###$$$$  ###$$$$  ###$$$$  ###$$$$
+  # Some additional constraints
   mid_s.fixDelayed0!(mod, mS, mD)
   mid_s.gridConWind!(mod, mS, 7, Dict(8=>0.25, 9=>0.25, 10=>0.03))
   mid_s.gridConUppahBound!(mod, mS)
+  mid_s.gridConBudget!(mod, mS)
   set_optimizer(mod, Clp.Optimizer)
   optimize!(mod)
   mid_s.writeRes(mod, mS, mD, pr)
-  return mod
+  return mod, mS, mD, pr
 end
 
 

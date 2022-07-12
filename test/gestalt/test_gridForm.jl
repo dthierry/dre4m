@@ -22,6 +22,10 @@ using Test
     @test i in kfb
     @test i in kco
   end
+  g.fuelBased[0] = true
+  g.fuelBased[1] = true
+  g.co2Based[1] = true
+  g.co2Based[1] = true
   @test sum(g.kinds_x) == 0
   @test sum(g.kinds_z) == 0
 end

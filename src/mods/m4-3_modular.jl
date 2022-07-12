@@ -41,18 +41,6 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
 
   #: Model creation
   m = Model()
-  #  open(fname*"_kinds.txt", "w") do file
-  #    write(file, "kinds_z\n")
-  #    for i in 0:I-1
-  #      write(file, "$(kinds_z[i+1])\n")
-  #    end
-  #    write(file, "kinds_x\n")
-  #    for i in 0:I-1
-  #      write(file, "$(kinds_x[i+1])\n")
-  #    end
-  #  end
-  ##
-
   # Variables
   # this goes to N just because we need to constrain z at N-1
   # existing asset (GWh)
@@ -115,7 +103,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   #: hey let's just create effective generation variables instead
   #: it seems that the capacity factors are the same regardless of 
   #: us having retrofits, new capacity, etc.
-  yrHr = 24 * 365  # hours in a year
+  yrHr = 24* 365.  # hours in a year
 
   @variable(m, 
             Wgen[t=0:T-1, i=0:I-1, j=0:N[i]-1])
@@ -350,13 +338,16 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
              )
   #: these are the hard questions
   @constraint(m, WgEq[t=0:T-1, i=0:I-1, j=0:N[i]-1], 
-              Wgen[t, i, j] == yrHr * cFactW[i+1, j+1] * W[t, i, j]
+              Wgen[t, i, j] == 
+              yrHr * cFactW[i+1, j+1] * W[t, i, j]
               )
   @constraint(m, ZgEq[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, j=0:Nz[i, k]-1],
-              Zgen[t, i, k, j] == yrHr * cFactW[i+1, j+1] * Z[t, i, k, j]
+              Zgen[t, i, k, j] == 
+              yrHr * cFactW[i+1, j+1] * Z[t, i, k, j]
               )
   @constraint(m, XgEq[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, j=0:Nx[i, k]-1],
-              Xgen[t, i, k, j] == yrHr * cFactW[i+1, j+1] * X[t, i, k, j]
+              Xgen[t, i, k, j] == 
+              yrHr * cFactW[i+1, j+1] * X[t, i, k, j]
               )
   #: Generation (GWh)
   @constraint(m, sGenEq[t = 1:T-1, i = 0:I-1],
@@ -400,7 +391,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
               heat_x_E[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, 
                        j=0:Nx[i, k]-1; fuelBased[i]],
               heat_x[t, i, k, j] == 
-              Xgen[t, i, k, j] * heatRateX(mD, i, k, j, t, N[i]-1) 
+              Xgen[t, i, k, j] * heatRateX(mD, i, k, j, t) 
              )
 
   @constraint(m,
