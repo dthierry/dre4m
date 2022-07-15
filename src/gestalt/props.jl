@@ -20,7 +20,7 @@ mutable struct prJrnl
   end
 end
 
-@enum jrnlMode j_start j_log_f j_finish
+@enum jrnlMode j_start j_log_f j_query
 
 function jrnlst!(pr::prJrnl, jMode::jrnlMode)
   fname = pr.fname
@@ -50,6 +50,11 @@ function jrnlst!(pr::prJrnl, jMode::jrnlMode)
         stdout=fname*"_$(pr.count).out", append=true))
     @info "Caller $(refFile)"
   end
-  pr.count += 1
+  if jMode == j_query
+    pr.finalT = Dates.now()
+    @info "Logged @ $(pr.finalT - pr.initT)"
+  else 
+    pr.count += 1
+  end
 end
 

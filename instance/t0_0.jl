@@ -74,9 +74,13 @@ function main()
   mid_s.gridConWind!(mod, mS, 7, Dict(8=>0.25, 9=>0.25, 10=>0.03))
   mid_s.gridConUppahBound!(mod, mS)
   mid_s.gridConBudget!(mod, mS)
+  jrnl = mid_s.j_query
+  mid_s.jrnlst!(pr, jrnl)
   set_optimizer(mod, Clp.Optimizer)
   optimize!(mod)
+  mid_s.jrnlst!(pr, jrnl)
   mid_s.writeRes(mod, mS, mD, pr)
+  mid_s.jrnlst!(pr, jrnl)
   return mod, mS, mD, pr
 end
 
