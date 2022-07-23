@@ -6,7 +6,7 @@
 #####
 # PREPROCESSING OF (SOME) COEFFICIENT MATRICES
 #####
-function preProcCoef!(mD::modData)
+function preProc!(mD::modData)
   ta = mD.ta
   ca = mD.ca
   ia = mD.ia

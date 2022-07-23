@@ -39,8 +39,25 @@ function main()
   gf.fuelBased[4] = true  # B
   gf.fuelBased[5] = true  # N
   # set retrofit form
+  # conversion factors time attr
+  icf = (1e0/1e3) # MW -> GW
+  nff = (1e0/1e3) # MW -> GW
+  hrf = 1e0 
+  hr2f = 1e0 # BTU/kWh -> MMBTU/GWh
+  # time Attributes
   ta = mid_s.timeAttr(file)
+  # conversion factors cost
+  ccf = 1e0  # $/kW -> M$/GW
+  fcf = 1e0 # $/kW -> M$/GW 
+  vcf = (1e3/1e6) # $/MWh -> M$/GWh
+  esf = (1e6/(100.0*1e6)) # cent/kWh -> M$/GWh
+  fuf = (1e0/1e6) # $/MMBTU -> M$/MMBTU
+  dcf = (1e3/1e6) # $/MW -> M$/GW
+  # cost attributes
   ca = mid_s.costAttr(file)
+  # conversion factors inv att
+  cif = (1e0/1e3) # kgCo2/MMBTU -> tCo2/MMBTU
+  # inv attributes
   ia = mid_s.invrAttr(file)
   #
   sl = ia.servLife
@@ -52,14 +69,14 @@ function main()
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   # setup retrofitform
   rf = mid_s.retrofForm(rfCaGrd,
-                        rfOnMgrd, 
-                        rfOnMgrd, 
-                        rfHtrGrd, 
-                        rfCoGrd, 
+                        rfOnMgrd,
+                        rfOnMgrd,
+                        rfHtrGrd,
+                        rfCoGrd,
                         rfFuGrd)
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   mD = mid_s.modData(gf, ta, ca, ia, rf)
-  mid_s.preProcCoef!(mD)
+  # mid_s.preProc!(mD)
   #for j in 1:size(mD.ta.cFac)[2]
   #  mD.ta.cFac[8, j] = 0.99
   #end
