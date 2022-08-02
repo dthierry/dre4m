@@ -103,10 +103,13 @@ end
 # plant level hash table
 dp = Dict()
 for row in eachrow(dfp)
-    name = row["PNAME"]
-    dp[name] = (row["SECTOR"],"LOLZ")
+    name = row["ORISPL"]
+    dp[name] = row["SECTOR"]
 end
-newcol = []
+
+sectlist = []
+npnooris = 0
+uahilist = []
 stat = []
 norisunm = 0
 ngidunmtch = 0
@@ -119,6 +122,16 @@ for row in eachrow(dfg)
     pname = row["PNAME"]
     gpm = row["PRMVR"]
     gpf = row["FUELG1"]
+    ps = "unk" 
+    try
+        ps = dp[oris]
+    catch y
+        if isa(y, KeyError)
+            @info "$(pname), $(oris), not found in the plant dict n=(npnooris)"
+            global npnooris += 1
+        end
+    end
+    push!(sectlist, ps)
     val = -888e0
     st = "unmatched"
     local d = Dict()
@@ -171,11 +184,11 @@ for row in eachrow(dfg)
             end
         end
     end
-    push!(newcol, val)
+    push!(uahilist, val)
     push!(stat, st)
 end
 
-
+@info "no oris plant match=$(npnooris)"
 @info "no oris match =$(norisunm)"
 @info "no gen id match =$(ngidunmtch)"
 @info "no gen id match then rematch =$(ngidremtch)"
@@ -183,7 +196,8 @@ end
 @info "no gen id match withouth hope=$(ngidunmtch-ngidremtch-ngidnohope)"
 
 # insert the new columns
-insertcols!(dfg, :UHI=>newcol)
+insertcols!(dfg, :SECTOR=>sectlist)
+insertcols!(dfg, :UHI=>uahilist)
 insertcols!(dfg, :STUHI=>stat)
 
 # compute the heat rate
@@ -197,8 +211,15 @@ dfg[:, :HR] .= ifelse.(isnan.(coalesce.(dfg[:,:HR],1)), missing, dfg[:, :HR])
 # negative
 dfg[:, :HR] .= ifelse.(coalesce.(dfg[:,:HR], 10) .< 0, missing, dfg[:, :HR])
 
-XLSX.writetable("df.xlsx", dfg)
 
+dfg[:, :PMPF] = dfg[:, "PRMVR"].*"_".*dfg[:,"FUELG1"]
+
+
+opdf = dfg[dfg.GENSTAT .== "OP", :]
+dropmissing!(opdf, :SECTOR)
+opdf = opdf[opdf.SECTOR .== "Electric Utility", :]
+
+XLSX.writetable("df.xlsx", opdf)
 # julia> dropmissing(df, :x)
 # julia> dropmissing(df, disallowmissing=true)
 #
