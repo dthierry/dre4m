@@ -132,7 +132,7 @@ for row in eachrow(dfg)
         end
     end
     push!(sectlist, ps)
-    val = -888e0
+    val = missing
     st = "unmatched"
     local d = Dict()
     try
@@ -175,7 +175,7 @@ for row in eachrow(dfg)
                     st = "avg"
                     @info "\tsome hope"
                 catch
-                    val = 0.0
+                    val = missing
                     st = "nohope"
                     global ngidnohope += 1
                     @info "$(oris) $(pname) $(genid) $(gpm) $(gpf)
@@ -211,25 +211,72 @@ dfg[:, :HR] .= ifelse.(isnan.(coalesce.(dfg[:,:HR],1)), missing, dfg[:, :HR])
 # negative
 dfg[:, :HR] .= ifelse.(coalesce.(dfg[:,:HR], 10) .< 0, missing, dfg[:, :HR])
 
-
+# add a column with prime_mover_prime_fuel
 dfg[:, :PMPF] = dfg[:, "PRMVR"].*"_".*dfg[:,"FUELG1"]
+# filter out only operating
+#opdf = dfg[dfg.GENSTAT .== "OP", :]
+opdf = filter(row -> row.GENSTAT == "OP", dfg)
 
-
-opdf = dfg[dfg.GENSTAT .== "OP", :]
+# drop missing sector
 dropmissing!(opdf, :SECTOR)
-opdf = opdf[opdf.SECTOR .== "Electric Utility", :]
 
-XLSX.writetable("df.xlsx", opdf)
-# julia> dropmissing(df, :x)
-# julia> dropmissing(df, disallowmissing=true)
-#
-#
-#dg = groupby(dfg, :FUELG1)
-#ng = get(gd, (FUELG1="NG",), nothing)
-#opng = filter(row -> row.GENSTAT == "OP", ng)
+# filter out only electric utilities
+filter!(row -> row.SECTOR == "Electric Utility", opdf)
 
-#yrg = groupby(opng, :GENYRONL)
-#yr77 = get(yrg, (GENYRONL=:1977,), nothing)
+minyr = minimum(opdf[:, :GENYRONL])
+maxyr = minimum(opdf[:, :GENYRONL])
+#XLSX.writetable("df.xlsx", opdf)
 
-#
+# create dataframe groups
+grpf = groupby(opdf, :PMPF)
 
+#ng = get(grpf, (PMPF="CA_NG",), nothing)
+# Capacity dataframe
+dfCap = DataFrame(:GENYRONL=>minyr:maxyr)
+
+# calculate the aggregated capacity
+for df in grpf
+    gname = df[1, :PMPF]
+    yrCap = combine(groupby(df, :GENYRONL), 
+                    :NAMEPCAP => sum => Symbol(gname))
+    global dfCap = outerjoin(dfCap, yrCap, on=:GENYRONL)
+end
+
+# sort by year
+sort!(dfCap, :GENYRONL)
+# make the years into strings
+transform!(dfCap, [:GENYRONL] => (x->string.(x)) => :GENYRONL)
+# transpose
+permutedims(dfCap, 1)
+
+
+# heat rates
+# drop the rows without hr
+dropmissing!(opdf, :HR)
+# group by prime-mover-fuel
+grpf = groupby(opdf, :PMPF)
+# create weighted average hr dataframe
+dfWavgHr = DataFrame(:GENYRONL=>minyr:maxyr)
+for df in grpf
+    gname = df[1, :PMPF].*"_WAVGHR"
+    yrHr = combine(groupby(df, :GENYRONL),
+                   [:NAMEPCAP, :HR] => ((x,y)->sum((x./sum(x)).*y)) 
+                   => Symbol(gname))
+    # yrHr = DataFrame(:GENYRONL=>Int64[], Symbol(gname)=>Float64[])
+    # for g in groupby(df, :GENYRONL)
+    #     y = g[1, :GENYRONL]
+    #     g0 = select(g, :NAMEPCAP => (x->x./sum(x))=> :W, :HR)
+    #     g0 = select(g0, [:W, :HR] => ((x, y)->x.*y) => :WHR)
+    #     s = sum(g0[:, :WHR])
+    #     push!(yrHr, (y, s))
+    # end
+    global dfWavgHr = outerjoin(dfWavgHr, yrHr, on=:GENYRONL)
+end
+
+# sort by year
+sort!(dfWavgHr, :GENYRONL)
+
+transform!(dfWavgHr, :GENYRONL => (x->string.(x))=> :GENYRONL)
+
+# transpose
+permutedims(dfWavgHr, 1)

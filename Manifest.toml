@@ -2,7 +2,7 @@
 
 julia_version = "1.8.0-rc1"
 manifest_format = "2.0"
-project_hash = "87637dc7f49e9fd0331cc115d6d2dd95a6eb110a"
+project_hash = "57f3f51b8082e31560f2907961de1ee23b8ccb37"
 
 [[deps.ASL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -442,6 +442,12 @@ uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 [[deps.REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+
+[[deps.REPLHistory]]
+deps = ["InteractiveUtils", "Pkg", "REPL", "Test"]
+git-tree-sha1 = "c12ad1c05b6f0e0f7b9d6b2f1623e2f0c2b52828"
+uuid = "a5566ce3-012c-4b09-85b8-62131f0c3f36"
+version = "0.2.0"
 
 [[deps.Random]]
 deps = ["SHA", "Serialization"]
