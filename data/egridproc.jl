@@ -159,12 +159,19 @@ for row in eachrow(dfg)
                 # search for a match in the akas list
                 if akaG == k[1] # found
                     genidG = k[2]
-                    dl = d[genidG] # use this key entry instead
-                    @info "Found $(genid) $(genidG) nrematch=$(ngidremtch)"
-                    global ngidremtch+=1
-                    val = dl[4]
-                    st = "matchx"
-                    planB = true
+                    dl = d[genidG] # attempt to use this key entry instead
+                    println(dl)
+                    if isa(dl[3], Missing)
+                        break
+                    end
+                    # this reduces the false maches
+                    if (dl[2] == gpm) && (dl[3] == gpf) # only match mover&fuel
+                        @info "Found $(genid) $(genidG) nrematch=$(ngidremtch)"
+                        global ngidremtch+=1
+                        val = dl[4]
+                        st = "matchx"
+                        planB = true
+                    end
                 end
             end
             # fetch the avg unit anual heat input
@@ -247,8 +254,8 @@ sort!(dfCap, :GENYRONL)
 # make the years into strings
 transform!(dfCap, [:GENYRONL] => (x->string.(x)) => :GENYRONL)
 # transpose
-permutedims(dfCap, 1)
-
+dfCap = permutedims(dfCap, 1)
+XLSX.writetable("cap2.xlsx", dfCap)
 
 # heat rates
 # drop the rows without hr
@@ -256,11 +263,11 @@ dropmissing!(opdf, :HR)
 # group by prime-mover-fuel
 grpf = groupby(opdf, :PMPF)
 # create weighted average hr dataframe
-dfWavgHr = DataFrame(:GENYRONL=>minyr:maxyr)
+dfWavHr = DataFrame(:GENYRONL=>minyr:maxyr)
 for df in grpf
     gname = df[1, :PMPF].*"_WAVGHR"
     yrHr = combine(groupby(df, :GENYRONL),
-                   [:NAMEPCAP, :HR] => ((x,y)->sum((x./sum(x)).*y)) 
+                   [:GENNTAN, :HR] => ((x,y)->sum((x./sum(x)).*y)) 
                    => Symbol(gname))
     # yrHr = DataFrame(:GENYRONL=>Int64[], Symbol(gname)=>Float64[])
     # for g in groupby(df, :GENYRONL)
@@ -270,13 +277,38 @@ for df in grpf
     #     s = sum(g0[:, :WHR])
     #     push!(yrHr, (y, s))
     # end
-    global dfWavgHr = outerjoin(dfWavgHr, yrHr, on=:GENYRONL)
+    global dfWavHr = outerjoin(dfWavHr, yrHr, on=:GENYRONL)
 end
 
 # sort by year
-sort!(dfWavgHr, :GENYRONL)
+sort!(dfWavHr, :GENYRONL)
 
-transform!(dfWavgHr, :GENYRONL => (x->string.(x))=> :GENYRONL)
+transform!(dfWavHr, :GENYRONL => (x->string.(x))=> :GENYRONL)
 
 # transpose
-permutedims(dfWavgHr, 1)
+dfWavHr = permutedims(dfWavHr, 1)
+
+XLSX.writetable("hr2.xlsx", dfWavHr)
+
+
+# BIT, LIG, SUB, RC, WC, SGC, COG => COAL
+# NG, BU => NG
+# DFO, JF, KER, PC, RG, RFO, WO => PETROLEUM
+# BFG, OG, TDF => OTHER FOSSIL
+# NUC
+# OBG, OBL
+# SUN
+# WAT
+#
+#
+# Pulverized Coal (PC)
+# Natural Gas (NGGT)
+# Natural Gas (NGCC)
+# Petroleum (P)
+# Biomass (B)
+# Nuclear (N)
+# Hydroelectric (H)
+# On-shore wind (W)
+# Solar PV (SPV)
+# Solar Thermal (STH)
+# Geothermal (G)
