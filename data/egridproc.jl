@@ -398,6 +398,7 @@ sort!(dfWavHr2, :GENYRONL, rev=true)
 transform!(dfWavHr2, :GENYRONL => (x->string.(x))=> :GENYRONL)
 # transpose
 dfWavHr2 = permutedims(dfWavHr2, 1)
+    
 
 XLSX.writetable("hr3.xlsx", dfWavHr2)
 

@@ -339,11 +339,11 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   #: these are the hard questions
   @constraint(m, WgEq[t=0:T-1, i=0:I-1, j=0:N[i]-1], 
               Wgen[t, i, j] == 
-              yrHr * cFactW[i+1, j+1] * W[t, i, j]
+              yrHr * cFactW[i+1, 1] * W[t, i, j]
               )
   @constraint(m, ZgEq[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, j=0:Nz[i, k]-1],
               Zgen[t, i, k, j] == 
-              yrHr * cFactW[i+1, j+1] * Z[t, i, k, j]
+              yrHr * cFactW[i+1, 1] * Z[t, i, k, j]
               )
   @constraint(m, XgEq[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, j=0:Nx[i, k]-1],
               Xgen[t, i, k, j] == 

@@ -10,15 +10,15 @@ Clp.Clp_Version()
 
 using mid_s
 using JuMP
-include("../src/bark/thinghys.jl")
+include("../../src/bark/thinghys.jl")
 
 function main()
   pr = mid_s.prJrnl()
   jrnl = mid_s.j_start
   pr.caller = @__FILE__
   mid_s.jrnlst!(pr, jrnl)
-  file = "/Users/dthierry/Projects/mid-s/data/cap_mw.xlsx"
-  T = 2050-2015
+  file = "/Users/dthierry/Projects/mid-s/data/instance_1.xlsx"
+  T = 2050-2020
   gf = mid_s.gridForm(I)
   # Set arbitrary (new) tech for subprocess i
   for i in 1:I
@@ -76,10 +76,6 @@ function main()
                         rfFuGrd)
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   mD = mid_s.modData(gf, ta, ca, ia, rf)
-  # mid_s.preProc!(mD)
-  #for j in 1:size(mD.ta.cFac)[2]
-  #  mD.ta.cFac[8, j] = 0.99
-  #end
 
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   mod = mid_s.genModel(mS, mD, pr) 
