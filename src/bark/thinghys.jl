@@ -25,6 +25,7 @@ xDelay[techToId["NGCT"]] = 4
 xDelay[techToId["NGCC"]] = 4
 xDelay[techToId["N"]] = 10
 xDelay[techToId["H"]] = 10
+
 kinds_x = [
            1, # 0
            1, # 1
@@ -74,8 +75,6 @@ co2Based[techToId["NGCC"]] = true
 co2Based[techToId["P"]] = true
 co2Based[techToId["B"]] = true
 
-
-
 # 0 Pulverized Coal (PC)
 # 1 Natural Gas (NGGT) a turbine or smth
 # 2 Natural Gas (NGCC)
@@ -98,6 +97,20 @@ co2Based[techToId["B"]] = true
 #: kind 1 := efficiency
 #: all else efficiency
 
+# tba
+# : 30% coal
+#: bio
+#: kind 0 := 10% biomass co-fore retrofit
+#: nuke
+#: kind 0 := small modular nuc reactor
+
+# tba as new
+# coal:
+# 30 CC
+# 90 CC
+# ngcc:
+# 90 CC
+#
 
 #: we need ...
 # rCap, rVar, rFix, rHtr, rCo, rFuel

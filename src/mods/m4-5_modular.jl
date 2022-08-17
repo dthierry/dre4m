@@ -12,6 +12,8 @@ using JuMP
 Generates model with variables and constraints.
 """
 function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
+    #: There is model sets: mS, and
+    # model data: mD.
   #: Initial sets
   T = mS.T
   I = mS.I
@@ -21,33 +23,12 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   Kz = mS.Kz
   Kx = mS.Kx
   #
-  @info typeof(mD.f.zDelay)
-  zDelay = Dict((0, 0)=>1)
-  for i in 0:I-1
-      for k in 0:Kz[i]-1
-          a = Int(ceil(rand()*5))
-          zDelay[i, k] = a
-          mD.f.zDelay[(i, k)] = a
-      end
-  end
-
-  xDelay = Dict((0, 0)=>1)
-  for i in 0:I-1
-      for k in 0:Kx[i]-1
-          a = Int(ceil(rand()*10))
-          xDelay[i, k] = a
-          mD.f.xDelay[(i, k)] = a
-      end
-  end
 
   @info mD.f.zDelay
   @info mD.f.xDelay
   
-  # mD.f.zDelay = zDelay
-  # mD.f.xDelay = xDelay
-
-  # @info mD.f.zDelay
-  # @info mD.f.xDelay
+  zDelay = mD.f.zDelay
+  xDelay = mD.f.xDelay 
 
   fuelBased = mD.f.fuelBased
   co2Based = mD.f.co2Based
@@ -702,6 +683,7 @@ function genObj!(m::JuMP.Model, mS::modSets, mD::modData)
   wLatRet = m[:wLatRet]
   xLatRet = m[:xLatRet]
   zLatRet = m[:zLatRet]
+
   @expression(m, wLat, sum(wLatRet))
   @expression(m, xLat, sum(zLatRet[t, i, k, j] 
                            for t in 0:T-1 for i in 0:I-1 for k in 0:Kz[i]-1 
@@ -748,31 +730,31 @@ end
 Add the wind ratio constraint for new techs.
 """
 function gridConWind!(
-          m::JuMP.Model, 
-          mS::modSets, 
-          baseIdx::Int64,
-          specRatio::Dict{Int64, Float64}
-          )
-  xAlloc = m[:xAlloc]
-  T = mS.T
-  Kx = mS.Kx
-  windIdx = baseIdx #: sometimes 7
-  windRatio = specRatio 
-  specIdx = keys(specRatio)
-  #: only applied on new allocations
-  @constraint(m, windRatI[t=1:T-1, i in specIdx],
-              sum(xAlloc[t, i, k] for k in 0:Kx[i]-1)
-              == 
-              sum(xAlloc[t, windIdx, k] * windRatio[i]
-                  for k in 0:Kx[windIdx]-1)
-  )
+        m::JuMP.Model, 
+        mS::modSets, 
+        baseIdx::Int64,
+        specRatio::Dict{Int64, Float64}
+    )
+    xAlloc = m[:xAlloc]
+    T = mS.T
+    Kx = mS.Kx
+    windIdx = baseIdx #: sometimes 7
+    windRatio = specRatio 
+    specIdx = keys(specRatio)
+    #: only applied on new allocations
+    @constraint(m, windRatI[t=1:T-1, i in specIdx],
+                sum(xAlloc[t, i, k] for k in 0:Kx[i]-1)
+                == 
+                sum(xAlloc[t, windIdx, k] * windRatio[i]
+                    for k in 0:Kx[windIdx]-1)
+               )
 end
 
 """
     gridConBudget(m::JuMP.Model, mS::modSets)
 Add the co2 budget constraint.
 """
-function gridConBudget!(
+function EmConBudget!(
           m::JuMP.Model, 
           mS::modSets)
   #: raison d'être
@@ -780,15 +762,16 @@ function gridConBudget!(
   T = mS.T
   #: magic numbers
   co22010 = 2.2584E+09
-  co2_2010_2015 = 10515700000.0
-  co22015 = co22010 - co2_2010_2015
+  # co2_2010_2015 = 10_515_700_000.0
+  # Greenhouse Gas Inventory Data Explorer
+  co2_2010_2019 = 19_315_983_000.0*2 # using the epa GHC
   co22050 = co22010 * 0.29
   #: Last term is a trapezoid minus the 2010-2015 gap
-  @info("The budget: $((co22010 + co22050) * 0.5 * 41 - co2_2010_2015)")
+  @info("The budget: $((co22010 + co22050) * 0.5 * 41 - co2_2010_2019)")
   co2OverallYr = m[:co2OverallYr]
   @constraint(m, co2Budget,
     sum(co2OverallYr[t] for t in 0:T-1) <= (co22010 + co22050) * 0.5 * 41 - 
-    co2_2010_2015
+    co2_2010_2019
   )
 end
 
