@@ -9,12 +9,12 @@
 # Operation and Maintenance (adjusted)
 # (existing)
 function wFixCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GW
-  #: Does not divide by the capacity factor
-  #: We could change this with the age as well.
-  cA = mD.ca
-  iA = mD.ia
-  discount = 1/((1.e0 +iA.discountR)^time)
-  return cA.fixC[baseKind+1, time+1]*discount
+    #: Does not divide by the capacity factor
+    #: We could change this with the age as well.
+    cA = mD.ca
+    iA = mD.ia
+    discount = 1/((1.e0 +iA.discountR)^time)
+    return cA.fixC[baseKind+1, time+1]*discount
 end
 function wVarCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GWh
   #: Based on generation.
@@ -148,16 +148,16 @@ end
 
 #: existing plant heat rate, (hr0) * (1+increase) ^ time
 function heatRateW(mD::modData, kind::Int64, age::Int64, 
-                    time::Int64, maxBase::Int64)
-  tA = mD.ta
-  iA = mD.ia
-  if age < time # this case does not exists
-    return 0
-  else
-    baseAge = age - time
-    baseAge = min(maxBase, baseAge)
-    return tA.heatRw[kind+1, baseAge+1]*(1.e0+iA.heatIncR)^time
-  end
+        time::Int64, maxBase::Int64)
+    tA = mD.ta
+    iA = mD.ia
+    if age < time # this case does not exists
+        return 0
+    else
+        baseAge = age - time
+        baseAge = min(maxBase, baseAge)
+        return tA.heatRw[kind+1, baseAge+1]*(1.e0+iA.heatIncR)^time
+    end
 end
 
 #: (retrofit)
@@ -195,7 +195,7 @@ function heatRateX(mD::modData, baseKind::Int64, kind::Int64,
     return 0
   end
   baseTime = time - age # simple as.
-  baseTime = max(baseTime - xDelay[baseKind], 0) 
+  baseTime = max(baseTime, 0) 
   #but actually if it's less than 0 just take 0
   return tA.heatRx[baseKind+1, baseTime+1]*(1.e0+iA.heatIncR)^time
 end

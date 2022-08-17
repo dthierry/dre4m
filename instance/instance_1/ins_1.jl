@@ -66,6 +66,13 @@ function main()
   # twenty percent service life increase
   # setup sets
   mS = mid_s.modSets(T, I, gf, sl, si)
+
+  println(mS.Nz)
+  println(maximum(values(mS.Nz)))
+  
+  println(mS.Nx)
+  println(maximum(values(mS.Nx)))
+
   ###$$$$  ###$$$$  ###$$$$  ###$$$$
   # setup retrofitform
   rf = mid_s.retrofForm(rfCaGrd,

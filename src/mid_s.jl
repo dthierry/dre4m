@@ -14,6 +14,6 @@ module mid_s
   include("./gestalt/modKern.jl")
   include("./pre/preprocess.jl")
   include("./coef/coef_custom.jl")
-  include("./mods/m4-3_modular.jl")
-  include("./post/postprocess.jl")
+  include("./mods/m4-5_modular.jl")
+  include("./post/postprocess2.jl")
 end

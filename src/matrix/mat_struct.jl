@@ -123,8 +123,8 @@ mutable struct invrAttr
   #: Loan period 
   loanP::Int64
   #: Delay
-  delayZ::Vector{Int64}
-  delayX::Vector{Int64}
+  delayZ::Dict{Tuple{Int64, Int64}, Int64}
+  delayX::Dict{Tuple{Int64, Int64}, Int64}
   function invrAttr(inputFile::String)
     XLSX.openxlsx(inputFile, mode="r") do xf
         sR = xf["reference"]
@@ -137,8 +137,9 @@ mutable struct invrAttr
     dr = s[sR["B17"]]
     hri = s[sR["B18"]]
     lp = s[sR["B19"]]
-    d = zeros(Int64, length(sl))
-    new(sl, ci, dr, hri, lp, d, d)
+    dx = Dict((0,0)=>1)
+    dz = Dict((0,0)=>1)
+    new(sl, ci, dr, hri, lp, dx, dz)
     end
   end
 end
