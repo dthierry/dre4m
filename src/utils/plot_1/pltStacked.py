@@ -93,7 +93,7 @@ def allStacked(l: dict, dmax: float) -> None:
         all_colours += [cmap(norm(cv)) for cv in colourVal]
     print(all_hatches)
     # Create subplots
-    f, a = plt.subplots(dpi=300)
+    f, a = plt.subplots(dpi=200)
     sp = a.stackplot(
             l["w"].index + 2020,
             all_columns,
@@ -153,8 +153,10 @@ def allStacked(l: dict, dmax: float) -> None:
     efn = excelFileName.split(".")[1].replace("/", "")
     print(efn)
     f.savefig(efn +"_all.png", format="png", bbox_inches="tight")
+    legend = a.legend(loc=0)
+    export_legend(legend,
+                  "legend_" + name + "_" + efn + "_try2" + ".png")
     #legend = a.legend()
-
     legend = a.legend(bbox_to_anchor=(1.0, 1.1))
     f.canvas.draw()
     bbox = legend.get_window_extent().transformed(f.dpi_scale_trans.inverted())
@@ -240,8 +242,8 @@ def sBars(l: list) -> None:
 def main():
     l, dmax = loadExcelOveralls()
     allStacked(l, dmax)
-    #stacksSingle(l, dmax)
-    sBars(l)
+    # stacksSingle(l, dmax)
+    # sBars(l)
     return l, dmax
 
 

@@ -64,6 +64,7 @@ mutable struct timeAttr
             cf = s[sR["B4"]] # cap fact
             ho = s[sR["B5"]].*hrf # vint hr
             hn = s[sR["B6"]].*hr2f # new hr
+
             new(ic,
                 nh,
                 cf,
@@ -142,5 +143,74 @@ mutable struct invrAttr
     new(sl, ci, dr, hri, lp, dx, dz)
     end
   end
+end
+
+# we keep the rf function but the fallback goes to the matrix
+struct retMbF
+    mCc
+    mFc
+    mVc
+    mHr
+    mEm
+    mFu
+
+    bCc
+    bFc
+    bVc
+    bHr
+    bEm
+    bFu
+    function retMbF(inputFile::String)
+        mCc = Dict((0,0)=>-9999e0)
+        mFc = Dict((0,0)=>-9999e0)
+        mVc = Dict((0,0)=>-9999e0)
+        mHr = Dict((0,0)=>-9999e0)
+        mEm = Dict((0,0)=>-9999e0)
+        mFu = Dict((0,0)=>-9999e0)
+
+        bCc = Dict((0,0)=>-9999)
+        bFc = Dict((0,0)=>-9999)
+        bVc = Dict((0,0)=>-9999)
+        bHr = Dict((0,0)=>-9999)
+        bEm = Dict((0,0)=>-9999)
+        bFu = Dict((0,0)=>-9999)
+        XLSX.openxlsx(inputFile, mode="r") do xf
+            sR = xf["reference"] 
+            s = xf["invrAttr"]
+            #matIdx = sR["B1"]
+            #kIdx = sR["B1"]
+            #
+            matIdx = "C29:P50" 
+            kIdx = "G11:G21"
+            kinds_z = s[kIdx]
+            In = length(kinds_z)
+
+
+            mat9999 = s[matIdx]
+            offset = 1
+            i = 0
+            for kn in kinds_z
+                k = 0
+                for j in (offset+1):(offset+kn)
+                    mCc[(i, k)] = mat9999[j, 3]
+                    bCc[(i, k)] = floor(mat9999[j, 4])
+                    mVc[(i, k)] = mat9999[j, 5]
+                    bVc[(i, k)] = floor(mat9999[j, 6])
+                    mFc[(i, k)] = mat9999[j, 7]
+                    bFc[(i, k)] = floor(mat9999[j, 8])
+                    mHr[(i, k)] = mat9999[j, 9]
+                    bHr[(i, k)] = floor(mat9999[j, 10])
+                    mEm[(i, k)] = mat9999[j, 11]
+                    bEm[(i, k)] = floor(mat9999[j, 12])
+                    mFu[(i, k)] = mat9999[j, 13]
+                    bFu[(i, k)] = floor(mat9999[j, 14])
+                    k += 1
+                end
+                offset += kn + 1
+                i += 1
+            end
+        end
+        new(mCc, mFc, mVc, mHr, mEm, mFu, bCc, bFc, bVc, bHr, bEm, bFu)
+    end
 end
 

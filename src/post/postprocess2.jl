@@ -75,6 +75,7 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
 
 
   zTrans = m[:zTrans]
+  xAlloc = m[:xAlloc]
   wE = m[:wE]
   zE = m[:zE]
   xE = m[:xE]
@@ -93,7 +94,26 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
 
   zOcap = m[:zOcap]
   xOcap = m[:xOcap]
+  
+  wFixOnM = m[:wFixOnM]
+  wVarOnM = m[:wVarOnM]
+  
+  zFixOnM = m[:zFixOnM]
+  zVarOnM = m[:zVarOnM]
 
+  xFixOnM = m[:xFixOnM]
+  xVarOnM = m[:xVarOnM]
+
+  wFuelC = m[:wFuelC]
+  zFuelC = m[:zFuelC]
+  xFuelC = m[:xFuelC]
+
+  termCz = m[:termCz]
+  termCx = m[:termCx]
+  
+  wLat = m[:wLat]
+  zLat = m[:zLat]
+  xLat = m[:xLat]
   kinds_z = mD.f.kinds_z
   kinds_x = mD.f.kinds_x
 
@@ -681,10 +701,177 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
       #: New
       for k in 0:Kx[i]-1
         sheet["A$(row)"] = "x_$(i)_$(k)"
-        sheet["B$(row)"] = sum(xD[t, i, k, 0] for t in 0:T-1) 
+        sheet["B$(row)"] = sum(value(xAlloc[t, i, k]) for t in 0:T-1) 
         row += 1
       end
     end
+
+    XLSX.addsheet!(xf)
+    row = 2
+    sheet = xf[5]
+    XLSX.rename!(sheet, "OnMcost")
+    sheet["A1"] = "tech"
+    for i in 0:I-1
+        sheet["A$(row)"] = "w_$(i)"
+        sheet["B$(row)"] = sum(
+                               value(wFixOnM[t, i]) + value(wVarOnM[t, i]) 
+                               for t in 0:T-1
+                              )
+        row += 1
+    end
+    ####
+    XLSX.addsheet!(xf)
+    row = 2
+    sheet = xf[6]
+    XLSX.rename!(sheet, "OnMcost_Z")
+    sheet["A1"] = "tech"
+    for i in 0:I-1
+        sheet["A$(row)"] = "z_$(i)"
+        sheet["B$(row)"] = sum(
+                               value(zFixOnM[t, i]) + value(zVarOnM[t, i]) 
+                               for t in 0:T-1) 
+        row += 1
+    end
+    ####
+    XLSX.addsheet!(xf)
+    row = 2
+    sheet = xf[7]
+    XLSX.rename!(sheet, "OnMcost_X")
+    sheet["A1"] = "tech"
+    for i in 0:I-1
+        sheet["A$(row)"] = "x_$(i)"
+        sheet["B$(row)"] = sum(
+                               value(xFixOnM[t, i]) + value(xVarOnM[t, i]) 
+                               for t in 0:T-1) 
+        row += 1
+    end
+    ####
+
+    XLSX.addsheet!(xf)
+    row = 2
+    sheet = xf[8]
+    XLSX.rename!(sheet, "wRet")
+    sheet["A1"] = "tech"
+    for i in 0:I-1
+        sheet["A$(row)"] = "w_$(i)"
+        sheet["B$(row)"] = sum(value(wRet[i, j]) 
+                               for j in 0:N[i]-1)
+        row += 1
+    end
+    ###
+    XLSX.addsheet!(xf)
+    ###
+    row = 2
+    sheet = xf[9]
+    XLSX.rename!(sheet, "zRet")
+    sheet["A1"] = "tech"
+    for i in 0:I-1
+        for k in 0:Kz[i]-1
+            sheet["A$(row)"] = "z_$(i)_$(k)"
+            sheet["B$(row)"] = sum(value(zRet[i,k,j]) 
+                                   for j in 0:N[i]-1)
+            row += 1
+        end
+    end
+    ####
+    ###
+    XLSX.addsheet!(xf)
+    ###
+    row = 2
+    sheet = xf[10]
+    XLSX.rename!(sheet, "xRet")
+    sheet["A1"] = "tech"
+    for i in 0:I-1
+        for k in 0:Kx[i]-1
+            sheet["A$(row)"] = "x_$(i)_$(k)"
+            sheet["B$(row)"] = sum(value(xRet[i,k,j]) 
+                                   for j in 0:T-1)
+            row += 1
+        end
+    end
+    ####
+    ####
+    XLSX.addsheet!(xf)
+    ###
+    row = 2
+    sheet = xf[11]
+    XLSX.rename!(sheet, "fuel")
+    sheet["A1"] = "tech"
+    for i in 0:I-1
+        if !fuelBased[i]
+            continue
+        end
+        sheet["A$(row)"] = "w_$(i)"
+        sheet["B$(row)"] = sum(value(wFuelC[t, i]) 
+                               for t in 0:T-1)
+        row += 1
+    end
+    for i in 0:I-1
+        if !fuelBased[i]
+            continue
+        end
+        sheet["A$(row)"] = "z_$(i)"
+        sheet["B$(row)"] = sum(value(zFuelC[t, i]) 
+                               for t in 0:T-1)
+        row += 1
+    end
+    for i in 0:I-1
+        if !fuelBased[i]
+            continue
+        end
+        sheet["A$(row)"] = "x_$(i)"
+        sheet["B$(row)"] = sum(value(xFuelC[t, i]) 
+                               for t in 0:T-1)
+        row += 1
+    end
+    ####
+    ####
+    XLSX.addsheet!(xf)
+    ###
+    row = 2
+    sheet = xf[12]
+    XLSX.rename!(sheet, "Lat")
+    sheet["A1"] = "kind"
+    sheet["A2"] = "existing"
+    sheet["A3"] = "retrofit"
+    sheet["A4"] = "new"
+    sheet["B1"] = "RetirePotentialOvrll"
+    sheet["B2"] = value(wLat) 
+    sheet["B3"] = value(zLat)
+    sheet["B4"] = value(xLat) 
+
+    ###
+    XLSX.addsheet!(xf)
+    ###
+    row = 2
+    sheet = xf[13]
+    XLSX.rename!(sheet, "termCz")
+    sheet["A1"] = "tech"
+    for i in 0:I-1
+        for k in 0:Kz[i]-1
+            sheet["A$(row)"] = "z_$(i)_$(k)"
+            sheet["B$(row)"] = sum(value(termCz[i, k, j]) 
+                                   for j in 0:N[i]-1)
+            row += 1
+        end
+    end
+
+    XLSX.addsheet!(xf)
+    ###
+    row = 2
+    sheet = xf[14]
+    XLSX.rename!(sheet, "termCx")
+    sheet["A1"] = "tech"
+    for i in 0:I-1
+        for k in 0:Kx[i]-1
+            sheet["A$(row)"] = "x_$(i)_$(k)"
+            sheet["B$(row)"] = sum(value(termCx[i, k, j]) 
+                                   for j in 0:T-1)
+            row += 1
+        end
+    end
+
   end
+
 end
 

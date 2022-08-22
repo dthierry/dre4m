@@ -14,44 +14,52 @@ Generates model with variables and constraints.
 function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
     #: There is model sets: mS, and
     # model data: mD.
-  #: Initial sets
-  T = mS.T
-  I = mS.I
-  N = mS.N
-  Nx = mS.Nx
-  Nz = mS.Nz
-  Kz = mS.Kz
-  Kx = mS.Kx
-  #
+    #: Initial sets
+    T = mS.T
+    I = mS.I
+    N = mS.N
+    Nx = mS.Nx
+    Nz = mS.Nz
+    Kz = mS.Kz
+    Kx = mS.Kx
 
-  @info mD.f.zDelay
-  @info mD.f.xDelay
-  
-  zDelay = mD.f.zDelay
-  xDelay = mD.f.xDelay 
+    zDelay = mD.f.zDelay
+    xDelay = mD.f.xDelay 
 
-  fuelBased = mD.f.fuelBased
-  co2Based = mD.f.co2Based
-  initCap = mD.ta.initCap
-  d = mD.ta.nachF
-  maxDelay = maximum(values(xDelay))
-  cFactW = mD.ta.cFac
-  size_cf = size(cFactW)
-  cFactZ = zeros((size_cf[1], size_cf[2], 1))
-  cFactX = zeros((size_cf[1], size_cf[2], 1))
-  #cFactZ = [for i=0:I-1  for j=0:N[i]-1]
-  #cFactZ = mD.ta.cFact
-  #cFactX = mD.ta.cFact
-   
-  jrnl = j_log_f
-  pr.caller = @__FILE__
-  jrnlst!(pr, jrnl)
+    for i in 0:I-1
+        for k in 0:Kz[i]-1
+            @info "Delay_z $(i) $(k) = $(zDelay[i, k])"
+        end
+    end
 
-  #: Model creation
-  m = Model()
-  # Variables
-  # this goes to N just because we need to constrain z at N-1
-  # existing asset (GWh)
+    for i in 0:I-1
+        for k in 0:Kx[i]-1
+            @info "Delay_x $(i) $(k) = $(xDelay[i, k])"
+        end
+    end
+
+    fuelBased = mD.f.fuelBased
+    co2Based = mD.f.co2Based
+    initCap = mD.ta.initCap
+    d = mD.ta.nachF
+    maxDelay = maximum(values(xDelay))
+    cFactW = mD.ta.cFac
+    size_cf = size(cFactW)
+    cFactZ = zeros((size_cf[1], size_cf[2], 1))
+    cFactX = zeros((size_cf[1], size_cf[2], 1))
+    #cFactZ = [for i=0:I-1  for j=0:N[i]-1]
+    #cFactZ = mD.ta.cFact
+    #cFactX = mD.ta.cFact
+
+    jrnl = j_log_f
+    pr.caller = @__FILE__
+    jrnlst!(pr, jrnl)
+
+    #: Model creation
+    m = Model()
+    # Variables
+    # this goes to N just because we need to constrain z at N-1
+    # existing asset (GWh)
   @variable(m,
             w[t=0:T, i=0:I-1, 
               j=0:N[i]-1] 
@@ -477,7 +485,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
 
   @constraint(m, zFuelC_E[t=0:T-1, i=0:I-1; fuelBased[i]],
               zFuelC[t, i] == 
-              sum(fuelCostZ(mD, i, t) * heat_z[t, i, k, j]
+              sum(fuelCostZ(mD, i, t, k) * heat_z[t, i, k, j]
               for k in 0:Kz[i]-1 
               for j in 0:N[i]-1)
              )
@@ -519,7 +527,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
                         j=0:N[i]-1],
               zRet[i, k, j] 
               == sum(
-              (retCostW(mD, i, t, j+t)*2 + 365*24*saleLost(mD, i, t, j)) 
+              (retCostW(mD, i, t, j+t) + 365*24*saleLost(mD, i, t, j)) 
               * uz[t, i, k, j] for t in 0:T-1 if t >= zDelay[i,k])
               )
 
@@ -619,6 +627,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
 
   function rLatentW(time, kind, age)
       return retCostW(mD, kind, 1, 1) * exp((age-N[kind])/N[kind])
+      # retirementCost_age_1 * exp((age-servLife)/servLife)
   end
 
   @variable(m, wLatRet[t=0:T-1, i=0:I-1,
@@ -627,6 +636,8 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   @constraint(m, wOldRetE[t=0:T-1, i=0:I-1, 
                        j=0:N[i]-1; (t+j)>=N[i]],
               wLatRet[t,i,j] == w[t, i, j] * rLatentW(t, i, (t+j))
+              #wLatRet[t,i,j] == w[t, i, j] * retCostW(mD, i, t, 
+              #                  min(1, max(31,N[i]-1 - t - j))))
              )
   #
   function rLatentZ(time, baseKind, kind, age)
@@ -641,6 +652,8 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   @constraint(m, zOldRetE[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, 
                           j=0:N[i]-1; (t+j) >= Nz[i, k] && t >= zDelay[i, k]],
               zLatRet[t, i, k, j] == z[t, i, k, j] * rLatentZ(t, i, k, (t+j))
+             # zLatRet[t, i, k, j] == z[t, i, k, j]*retCostW(mD, i, t, 
+             #                        min(1, max(31,Nz[i,k]-1 - t - j)))
              )
   #               
   function rLatentX(time, baseKind, kind, age)
@@ -655,6 +668,8 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   @constraint(m, xOldRetE[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, 
                           j=0:N[i]-1; (t-j) >= Nx[i, k]],
               xLatRet[t, i, k, j] == x[t, i, k, j] * rLatentX(t, i, k, (t-j))
+              #xLatRet[t, i, k, j] == x[t, i, k, j]*retCostW(mD, i, t, 
+              #                      min(1, max(31,Nx[i,k]-1 - t + j)))
              )
    
   return m
@@ -764,7 +779,7 @@ function EmConBudget!(
   co22010 = 2.2584E+09
   # co2_2010_2015 = 10_515_700_000.0
   # Greenhouse Gas Inventory Data Explorer
-  co2_2010_2019 = 19_315_983_000.0*2 # using the epa GHC
+  co2_2010_2019 = 19_315_983_000.0 # using the epa GHC
   co22050 = co22010 * 0.29
   #: Last term is a trapezoid minus the 2010-2015 gap
   @info("The budget: $((co22010 + co22050) * 0.5 * 41 - co2_2010_2019)")
