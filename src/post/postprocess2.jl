@@ -18,8 +18,9 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
 
   xDelay = mD.f.xDelay
   zDelay = mD.f.zDelay
-  fuelBased = mD.f.fuelBased
-  co2Based = mD.f.co2Based
+  fuelBased = mD.ia.fuelBased
+  co2Based = mD.ia.co2Based
+  bLoadTech = mD.ia.bLoadTech
   initCap = mD.ta.initCap
   d = mD.ta.nachF
   maxDelay = maximum(values(xDelay))
@@ -233,7 +234,7 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
   XLSX.openxlsx(fname*"_em.xlsx", mode="w") do xf
     global sh = 0
     for i in 0:I-1
-      if !co2Based[i]
+      if !co2Based[i+1]
         continue
       end
       global sh += 1
@@ -798,7 +799,7 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
     XLSX.rename!(sheet, "fuel")
     sheet["A1"] = "tech"
     for i in 0:I-1
-        if !fuelBased[i]
+        if !fuelBased[i+1]
             continue
         end
         sheet["A$(row)"] = "w_$(i)"
@@ -807,7 +808,7 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
         row += 1
     end
     for i in 0:I-1
-        if !fuelBased[i]
+        if !fuelBased[i+1]
             continue
         end
         sheet["A$(row)"] = "z_$(i)"
@@ -816,7 +817,7 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
         row += 1
     end
     for i in 0:I-1
-        if !fuelBased[i]
+        if !fuelBased[i+1]
             continue
         end
         sheet["A$(row)"] = "x_$(i)"

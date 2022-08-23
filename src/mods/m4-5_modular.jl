@@ -26,6 +26,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
     zDelay = mD.f.zDelay
     xDelay = mD.f.xDelay 
 
+
     for i in 0:I-1
         for k in 0:Kz[i]-1
             @info "Delay_z $(i) $(k) = $(zDelay[i, k])"
@@ -38,8 +39,10 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
         end
     end
 
-    fuelBased = mD.f.fuelBased
-    co2Based = mD.f.co2Based
+    fuelBased = mD.ia.fuelBased
+    co2Based = mD.ia.co2Based
+    bLoadTech = mD.ia.bLoadTech
+
     initCap = mD.ta.initCap
     d = mD.ta.nachF
     maxDelay = maximum(values(xDelay))
@@ -60,243 +63,236 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
     # Variables
     # this goes to N just because we need to constrain z at N-1
     # existing asset (GWh)
-  @variable(m,
-            w[t=0:T, i=0:I-1, 
-              j=0:N[i]-1] 
-            >= 0e0)
-  
-  # retired existing asset
-  @variable(m, uw[t = 0:T, i = 0:I-1, 
-                  j = 0:N[i]-1] 
-            >= 0e0)
-  #
+    @variable(m,
+              w[t=0:T, i=0:I-1, 
+                j=0:N[i]-1] 
+              >= 0e0)
+
+    # retired existing asset
+    @variable(m, uw[t = 0:T, i = 0:I-1, 
+                    j = 0:N[i]-1] 
+              >= 0e0)
    
-  # new asset
-  @variable(m, x[t = 0:T, 
-                 i = 0:I-1, k = 0:Kx[i]-1, 
-                 j = 0:T; t>=(j+xDelay[i, k])] 
-            >= 0e0)
-  #: made a ficticious point Nx so we can know how much is retired because it
-  #: becomes too old
-  #
-  @variable(m, 
-            xAlloc[t=0:T, i=0:I-1, k=0:Kx[i]-1] 
-            >= 0e0)
-
-  # retired new asset
-  @variable(m, ux[t = 0:T, 
-                  i = 0:I-1, k = 0:Kx[i]-1, 
-                  j = 0:T;
-                  t >= (j+xDelay[i, k])] 
-            >= 0)
-  # can't retire at j = 0
-
-  # retrofitted asset
-  @variable(m, 
-            z[t=0:T, i=0:I-1, k=0:Kz[i]-1, 
-              j=0:N[i]-1; 
-              t >= zDelay[i, k]] 
-            >= 0)
-  #: we have to recognize the fact that no retrofit tally can be kept at
-  # any point in time that is between 0 and the zDelay amount. 
-
-  #: the retrofit can't happen at the end of life of a plant, i.e., j goes from
-  #: 0 to N[i]-12
-  #: the retrofit can't happen at the beginning of life of a plant, i.e. j = 0
-  #: made a ficticious point Nxj so we can know how much is retired because it
-  #: becomes too old
-
-  @variable(m,
-            zTrans[t = 0:T, i = 0:I-1, k = 0:Kz[i]-1, 
-                   j = 0:N[i]-1] 
-            >= 0)
-  #: as opposed to "z", the zTrans variable can be defined from T=0
-
-  # retired retrofit
-  @variable(m, 
-            uz[t = 0:T, i = 0:I-1, k = 0:Kz[i]-1, 
-               j = 0:N[i]-1; t >= zDelay[i,k]] 
-            >= 0)
-  # can't retire at the first year of retrofit, jk = 0
-  # can't retire at the last year of retrofit, i.e. jk = |Nxj| 
-  #: no retirements at the last age (n-1), therefore only goes to n-2
-
-  # Effective capacity old
-  @variable(m, W[t=0:T-1, i=0:I-1, 
-                 j=0:N[i]-1])
-
-  @variable(m, 
-            Z[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, 
-              j=0:N[i]-1])
-  # Effective capacity new
-  @variable(m,
-            X[t=0:T-1, 
-              i=0:I-1, k=0:Kx[i]-1, 
-              j=0:T-1] 
-            )
-
-  #: hey let's just create effective generation variables instead
-  #: it seems that the capacity factors are the same regardless of 
-  #: us having retrofits, new capacity, etc.
-  yrHr = 24* 365.  # hours in a year
-
-  @variable(m, 
-            Wgen[t=0:T-1, i=0:I-1, 
-                 j=0:N[i]-1])
-
-  @variable(m, 
-            Zgen[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, 
-                 j=0:N[i]-1])
-
-  @variable(m, 
-            Xgen[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, 
-                 j=0:T-1])
-
-  #: Generation (GWh)
-  @variable(m, sGen[t = 1:T-1, i = 0:I-1]) #: supply generated
-
-  @variable(m, heat_w[t = 0:T-1, i = 0:I-1, 
-                      j = 0:N[i]-1; fuelBased[i]])
-
-  @variable(m, 
-            heat_z[t=0:T-1, 
-                   i=0:I-1, k=0:Kz[i]-1, 
-                   j=0:N[i]-1; fuelBased[i]])
-
-  @variable(m, 
-            heat_x[t=0:T-1, 
-                   i=0:I-1, k=0:Kx[i]-1, 
-                   j=0:T-1; fuelBased[i]])
-  # Carbon emission (tCO2)
-  @variable(m, 
-            wE[t = 0:T-1, i = 0:I-1, 
-               j = 0:N[i]-1; co2Based[i]])
-  #: ♪ Ah&eM
-  @variable(m, 
-            zE[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, 
-               j=0:N[i]-1; co2Based[i]]
-           )
-
-  @variable(m, 
-            xE[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, 
-               j=0:T-1; co2Based[i]]
-           )
-
-
-  # (overnight) Capital for new capacity
-  @variable(m, xOcap[t=0:T-1, i=0:I-1])
-
-  # (overnight) Capital for retrofits
-  @variable(m, zOcap[t=0:T-1, i=0:I-1, k=0:Kz[i]-1])
-  # Operation and Maintenance for existing 
-  #: Do we have to partition this term?
-  @variable(m, wFixOnM[t=0:T-1, i=0:I-1])
-  @variable(m, wVarOnM[t=0:T-1, i=0:I-1])
- 
-  # O and M for retrofit
-  @variable(m, zFixOnM[t=0:T-1, i=0:I-1])
-  @variable(m, zVarOnM[t=0:T-1, i=0:I-1])
-  # O and M for new
-  @variable(m, xFixOnM[t=0:T-1, i=0:I-1])
-  @variable(m, xVarOnM[t=0:T-1, i=0:I-1])
-  # Fuel
-  @variable(m, wFuelC[t=0:T-1, i=0:I-1; fuelBased[i]])
-
-  @variable(m, zFuelC[t=0:T-1, i=0:I-1; fuelBased[i]])
-
-  @variable(m, xFuelC[t=0:T-1, i=0:I-1; fuelBased[i]])
-
-  @variable(m, co2OverallYr[t=0:T-1])
-
-  # Natural "organic" retirement
-
-  # "Forced" retirement
-  @variable(m, wRet[i=0:I-1, 
-                    j=0:N[i]-1])
-  @variable(m, zRet[i=0:I-1, k=0:Kz[i]-1, 
-                    j=0:N[i]-1])
-  @variable(m, xRet[i=0:I-1, k=0:Kx[i]-1, 
-                    j=0:T])
-
-  # Net present value
-  @variable(m, npv) # ≥ 1000. * 2000.)
-
-  #: Terminal cost
-  @variable(m, termCw[i=0:I-1, 
-                      j=0:N[i]-1])
-
-  @variable(m, termCx[i=0:I-1, k=0:Kx[i],
-                      j=0:T-1])
-
-  @variable(m, termCz[i=0:I-1, k=0:Kz[i]-1, 
-                      j=0:N[i]-1])
-
-  @variable(m, termCost >= 0) #: overall
-  
-  ############ Constraint definition $$$$$$$$$$$$
-  
-  # w balance0
-  @constraint(m, 
-            wbal[t = 0:T-1, i = 0:I-1, 
-                 j = 0:N[i]-1],
-            w[t+1, i, j] == w[t, i, j] 
-            - uw[t, i, j] 
-            - sum(zTrans[t, i, k, j] for k in 0:Kz[i]-1)
-           )
-  #: the tally of assets of initial-age j
-
-  # Zero out all the initial condition of the retrofits 
-  @constraint(m,
-              ic_zE[i=0:I-1, 
-                    k=0:Kz[i]-1, j=0:N[i]-1],
-              z[zDelay[i, k], i, k, j] == 0
-             )
-  # z balance
-  @constraint(m, 
-              zBal[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, 
-                   j=0:N[i]-1; t >= zDelay[i,k]],
-              z[t+1, i, k, j] == 
-              z[t, i, k, j] 
-              - uz[t, i, k, j]
-              + zTrans[t-zDelay[i, k], i, k, j]
-             )
-  #: new allocations
-  @constraint(m,
-              xallocE[t=0:T-1,
-                      i=0:I-1, k=0:Kx[i]-1,
-                      j=0:T-1; t==(j+xDelay[i, k])],
-              x[t, i, k, j] == xAlloc[t-xDelay[i, k], i, k]
-             )
-  # x at age 0 balance
-  #@constraint(m,
-  #            xbal0[t = 0:T-1, 
-  #                  i = 0:I-1, k = 0:Kx[i]-1, 
-  #                  j = 0:T-1; t==(j+xDelay[i])],
-  #            x[t+1, i, k, j] == x[t, i, k, j] 
-  #                )
-  #: leading time goes here
-  # x balance
-  @constraint(m,
-              xbal[t = 0:T-1, 
+    # new asset
+    @variable(m, x[t = 0:T, 
                    i = 0:I-1, k = 0:Kx[i]-1, 
-                   j = 0:T-1; t>=(j+xDelay[i, k])],
-              x[t+1, i, k, j] == x[t, i, k, j] - ux[t, i, k, j]
-                  )
-  # don't allow new assets to be retired at 0
-  @constraint(m,
-              initial_w_E[i = 0:I-1, j = 0:N[i]-1],
-              w[0, i, j] == initCap[i+1, j+1]
-             )
-  # no initial plant at retirement age is allowed
+                   j = 0:T; t>=(j+xDelay[i, k])] 
+              >= 0e0)
+    #: made a ficticious point Nx so we can know how much is retired because it
+    #: becomes too old
+    #
+    @variable(m, 
+              xAlloc[t=0:T, i=0:I-1, k=0:Kx[i]-1] 
+              >= 0e0)
 
-  
-  #: they have to be split as there are no forced retirements at time = 0
-  @constraint(m, W_E[t=0:T-1, i=0:I-1, j=0:N[i]-1],
-              W[t, i, j] == 
-              w[t, i, j] 
-              - uw[t, i, j] 
-              - sum(zTrans[t, i, k, j] for k in 0:Kz[i]-1)
+    # retired new asset
+    @variable(m, ux[t = 0:T, 
+                    i = 0:I-1, k = 0:Kx[i]-1, 
+                    j = 0:T;
+                    t >= (j+xDelay[i, k])] 
+              >= 0)
+    # can't retire at j = 0
+
+    # retrofitted asset
+    @variable(m, 
+              z[t=0:T, i=0:I-1, k=0:Kz[i]-1, 
+                j=0:N[i]-1; 
+                t >= zDelay[i, k]] 
+              >= 0)
+    #: we have to recognize the fact that no retrofit tally can be kept at
+    # any point in time that is between 0 and the zDelay amount. 
+
+    #: the retrofit can't happen at the end of life of a plant, i.e., j goes from
+    #: 0 to N[i]-12
+    #: the retrofit can't happen at the beginning of life of a plant, i.e. j = 0
+    #: made a ficticious point Nxj so we can know how much is retired because it
+    #: becomes too old
+
+    @variable(m,
+              zTrans[t = 0:T, i = 0:I-1, k = 0:Kz[i]-1, 
+                     j = 0:N[i]-1] 
+              >= 0)
+    #: as opposed to "z", the zTrans variable can be defined from T=0
+
+    # retired retrofit
+    @variable(m, 
+              uz[t = 0:T, i = 0:I-1, k = 0:Kz[i]-1, 
+                 j = 0:N[i]-1; t >= zDelay[i,k]] 
+              >= 0)
+    # can't retire at the first year of retrofit, jk = 0
+    # can't retire at the last year of retrofit, i.e. jk = |Nxj| 
+    #: no retirements at the last age (n-1), therefore only goes to n-2
+
+    # Effective capacity old
+    @variable(m, W[t=0:T-1, i=0:I-1, 
+                   j=0:N[i]-1])
+
+    @variable(m, 
+              Z[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, 
+                j=0:N[i]-1])
+    # Effective capacity new
+    @variable(m,
+              X[t=0:T-1, 
+                i=0:I-1, k=0:Kx[i]-1, 
+                j=0:T-1] 
              )
+
+    #: hey let's just create effective generation variables instead
+    #: it seems that the capacity factors are the same regardless of 
+    #: us having retrofits, new capacity, etc.
+    yrHr = 24* 365.  # hours in a year
+
+    @variable(m, 
+              Wgen[t=0:T-1, i=0:I-1, 
+                   j=0:N[i]-1])
+
+    @variable(m, 
+              Zgen[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, 
+                   j=0:N[i]-1])
+
+    @variable(m, 
+              Xgen[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, 
+                   j=0:T-1])
+
+    #: Generation (GWh)
+    @variable(m, sGen[t = 1:T-1, i = 0:I-1]) #: supply generated
+
+    @variable(m, heat_w[t = 0:T-1, i = 0:I-1, 
+                        j = 0:N[i]-1; fuelBased[i+1]])
+
+    @variable(m, 
+              heat_z[t=0:T-1, 
+                     i=0:I-1, k=0:Kz[i]-1, 
+                     j=0:N[i]-1; fuelBased[i+1]])
+
+    @variable(m, 
+              heat_x[t=0:T-1, 
+                     i=0:I-1, k=0:Kx[i]-1, 
+                     j=0:T-1; fuelBased[i+1]])
+    # Carbon emission (tCO2)
+    @variable(m, 
+              wE[t = 0:T-1, i = 0:I-1, 
+                 j = 0:N[i]-1; co2Based[i+1]])
+    #: ♪ Ah&eM
+    @variable(m, 
+              zE[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, 
+                 j=0:N[i]-1; co2Based[i+1]]
+             )
+
+    @variable(m, 
+              xE[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, 
+                 j=0:T-1; co2Based[i+1]]
+             )
+
+
+    # (overnight) Capital for new capacity
+    @variable(m, xOcap[t=0:T-1, i=0:I-1])
+
+    # (overnight) Capital for retrofits
+    @variable(m, zOcap[t=0:T-1, i=0:I-1, k=0:Kz[i]-1])
+    # Operation and Maintenance for existing 
+    #: Do we have to partition this term?
+    @variable(m, wFixOnM[t=0:T-1, i=0:I-1])
+    @variable(m, wVarOnM[t=0:T-1, i=0:I-1])
+
+    # O and M for retrofit
+    @variable(m, zFixOnM[t=0:T-1, i=0:I-1])
+    @variable(m, zVarOnM[t=0:T-1, i=0:I-1])
+    # O and M for new
+    @variable(m, xFixOnM[t=0:T-1, i=0:I-1])
+    @variable(m, xVarOnM[t=0:T-1, i=0:I-1])
+    # Fuel
+    @variable(m, wFuelC[t=0:T-1, i=0:I-1; fuelBased[i+1]])
+
+    @variable(m, zFuelC[t=0:T-1, i=0:I-1; fuelBased[i+1]])
+
+    @variable(m, xFuelC[t=0:T-1, i=0:I-1; fuelBased[i+1]])
+
+    @variable(m, co2OverallYr[t=0:T-1])
+
+    # Natural "organic" retirement
+
+    # "Forced" retirement
+    @variable(m, wRet[i=0:I-1, 
+                      j=0:N[i]-1])
+    @variable(m, zRet[i=0:I-1, k=0:Kz[i]-1, 
+                      j=0:N[i]-1])
+    @variable(m, xRet[i=0:I-1, k=0:Kx[i]-1, 
+                      j=0:T])
+
+    # Net present value
+    @variable(m, npv) # ≥ 1000. * 2000.)
+
+    #: Terminal cost
+    @variable(m, termCw[i=0:I-1, 
+                        j=0:N[i]-1])
+
+    @variable(m, termCx[i=0:I-1, k=0:Kx[i],
+                        j=0:T-1])
+
+    @variable(m, termCz[i=0:I-1, k=0:Kz[i]-1, 
+                        j=0:N[i]-1])
+
+    @variable(m, termCost >= 0) #: overall
+
+    ############ Constraint definition $$$$$$$$$$$$
+
+    # w balance0
+    @constraint(m, 
+                wbal[t = 0:T-1, i = 0:I-1, 
+                     j = 0:N[i]-1],
+                w[t+1, i, j] == w[t, i, j] 
+                - uw[t, i, j] 
+                - sum(zTrans[t, i, k, j] for k in 0:Kz[i]-1)
+               )
+    #: the tally of assets of initial-age j
+
+    # Zero out all the initial condition of the retrofits 
+    @constraint(m,
+                ic_zE[i=0:I-1, 
+                      k=0:Kz[i]-1, j=0:N[i]-1],
+                z[zDelay[i, k], i, k, j] == 0
+               )
+    # z balance
+    @constraint(m, 
+                zBal[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, 
+                     j=0:N[i]-1; t >= zDelay[i,k]],
+                z[t+1, i, k, j] == 
+                z[t, i, k, j] 
+                - uz[t, i, k, j]
+                + zTrans[t-zDelay[i, k], i, k, j]
+               )
+    #: new allocations
+    @constraint(m,
+                xallocE[t=0:T-1,
+                        i=0:I-1, k=0:Kx[i]-1,
+                        j=0:T-1; t==(j+xDelay[i, k])],
+                x[t, i, k, j] == xAlloc[t-xDelay[i, k], i, k]
+               )
+    
+    #: leading time goes here
+    # x balance
+    @constraint(m,
+                xbal[t = 0:T-1, 
+                     i = 0:I-1, k = 0:Kx[i]-1, 
+                     j = 0:T-1; t>=(j+xDelay[i, k])],
+                x[t+1, i, k, j] == x[t, i, k, j] - ux[t, i, k, j]
+               )
+    # don't allow new assets to be retired at 0
+    @constraint(m,
+                initial_w_E[i = 0:I-1, j = 0:N[i]-1],
+                w[0, i, j] == initCap[i+1, j+1]
+               )
+    # no initial plant at retirement age is allowed
+
+
+    #: they have to be split as there are no forced retirements at time = 0
+    @constraint(m, W_E[t=0:T-1, i=0:I-1, j=0:N[i]-1],
+                W[t, i, j] == 
+                w[t, i, j] 
+                - uw[t, i, j] 
+                - sum(zTrans[t, i, k, j] for k in 0:Kz[i]-1)
+               )
 
   #: Effective capacity retrofit
   @constraint(m, 
@@ -314,7 +310,6 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
               z[t, i, k, j] - uz[t, i, k, j] 
               + zTrans[t-zDelay[i, k], i, k, j]
              )
-
 
   #: 
   @constraint(m, 
@@ -377,7 +372,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   # the actual age is j+t
   @constraint(m,
               heat_w_E[t=0:T-1, i=0:I-1, 
-                       j=0:N[i]-1; fuelBased[i]],
+                       j=0:N[i]-1; fuelBased[i+1]],
               heat_w[t, i, j] == 
               Wgen[t, i, j] * heatRateW(mD, i, j+t, t, N[i]-1)
              )
@@ -386,7 +381,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   # the actual age is j+t
   @constraint(m,
               heat_z_E[t = 0:T-1, i = 0:I-1, k = 0:Kz[i]-1, 
-                       j = 0:N[i]-1; fuelBased[i]],
+                       j = 0:N[i]-1; fuelBased[i+1]],
               heat_z[t, i, k, j] == 
               Zgen[t, i, k, j] * heatRateZ(mD, i, k, j+t, t, N[i]-1)
              )
@@ -394,27 +389,27 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   # the actual age is t-j
   @constraint(m,
               heat_x_E[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, 
-                       j=0:T-1; fuelBased[i]],
+                       j=0:T-1; fuelBased[i+1]],
               heat_x[t, i, k, j] == 
               Xgen[t, i, k, j] * heatRateX(mD, i, k, t-j, t) 
              )
 
   @constraint(m,
               e_wCon[t=0:T-1, i=0:I-1, 
-                     j=0:N[i]-1; co2Based[i]],
+                     j=0:N[i]-1; co2Based[i+1]],
               wE[t, i, j] == heat_w[t, i, j] * carbonIntW(mD, i)
              )
 
   @constraint(m,
               e_zCon[t = 0:T-1, i = 0:I-1, k =0:Kz[i]-1, 
-                     j=0:N[i]-1; co2Based[i]],
+                     j=0:N[i]-1; co2Based[i+1]],
               zE[t, i, k, j] == 
               heat_z[t, i, k, j] * carbonIntZ(mD, i, k)
              )
 
   @constraint(m,
               e_xCon[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, 
-                     j=0:T-1; co2Based[i]],
+                     j=0:T-1; co2Based[i+1]],
               xE[t, i, k, j] == heat_x[t, i, k, j] * carbonIntW(mD, i)
   )
 
@@ -477,20 +472,20 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
                   for j in 0:T-1)
              )
 
-  @constraint(m, wFuelC_E[t=0:T-1, i=0:I-1; fuelBased[i]],
+  @constraint(m, wFuelC_E[t=0:T-1, i=0:I-1; fuelBased[i+1]],
               wFuelC[t, i] == 
               fuelCostW(mD, i, t) * sum(heat_w[t, i, j]
                                 for j in 0:N[i]-1) 
              )
 
-  @constraint(m, zFuelC_E[t=0:T-1, i=0:I-1; fuelBased[i]],
+  @constraint(m, zFuelC_E[t=0:T-1, i=0:I-1; fuelBased[i+1]],
               zFuelC[t, i] == 
               sum(fuelCostZ(mD, i, t, k) * heat_z[t, i, k, j]
               for k in 0:Kz[i]-1 
               for j in 0:N[i]-1)
              )
 
-  @constraint(m, xFuelC_E[t=0:T-1, i=0:I-1; fuelBased[i]],
+  @constraint(m, xFuelC_E[t=0:T-1, i=0:I-1; fuelBased[i+1]],
               xFuelC[t, i] == 
               fuelCostW(mD, i, t) * sum(heat_x[t, i, k, j] 
                                                 for k in 0:Kx[i]-1
@@ -500,16 +495,16 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   @constraint(m, co2OverallYrE[t=0:T-1],
               co2OverallYr[t] == 
               sum(wE[t, i, j] for i in 0:I-1 
-                  for j in 0:N[i]-1 if co2Based[i])
+                  for j in 0:N[i]-1 if co2Based[i+1])
              + sum(zE[t, i, k, j] 
                  for i in 0:I-1 
                  for k in 0:Kz[i]-1 
                  for j in 0:N[i]-1 
-                 if co2Based[i])
+                 if co2Based[i+1])
              + sum(xE[t, i, k, j] 
                    for i in 0:I-1 
                    for k in 0:Kx[i]-1 
-                   for j in 0:T-1 if co2Based[i])
+                   for j in 0:T-1 if co2Based[i+1])
              )
 
   #: retirement based on "old" age
@@ -568,7 +563,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
                     + zFuelC[t, i] 
                     + xFuelC[t, i] 
                     for t in 0:T-1 
-                    for i in 0:I-1 if fuelBased[i])
+                    for i in 0:I-1 if fuelBased[i+1])
               + sum(wRet[i, j] 
                     for i in 0:I-1 
                     for j in 0:N[i]-1)
@@ -631,10 +626,10 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   end
 
   @variable(m, wLatRet[t=0:T-1, i=0:I-1,
-                       j=0:N[i]-1; (t+j) >= N[i]])
+                       j=0:N[i]-1; (t+j) >= N[i] && !bLoadTech[i+1]])
 
   @constraint(m, wOldRetE[t=0:T-1, i=0:I-1, 
-                       j=0:N[i]-1; (t+j)>=N[i]],
+                          j=0:N[i]-1; (t+j)>=N[i] && !bLoadTech[i+1]],
               wLatRet[t,i,j] == w[t, i, j] * rLatentW(t, i, (t+j))
               #wLatRet[t,i,j] == w[t, i, j] * retCostW(mD, i, t, 
               #                  min(1, max(31,N[i]-1 - t - j))))
@@ -646,11 +641,13 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   end
 
   @variable(m, zLatRet[t=0:T-1, i=0:I-1, k=0:Kz[i]-1,
-                       j=0:N[i]-1; (t+j) >= Nz[i, k] && t >= zDelay[i, k]]
+                       j=0:N[i]-1; 
+                       (t+j) >= Nz[i,k] && t >= zDelay[i,k] && !bLoadTech[i+1]]
            )
 
   @constraint(m, zOldRetE[t=0:T-1, i=0:I-1, k=0:Kz[i]-1, 
-                          j=0:N[i]-1; (t+j) >= Nz[i, k] && t >= zDelay[i, k]],
+                          j=0:N[i]-1; 
+                          (t+j)>=Nz[i,k] && t>=zDelay[i,k] && !bLoadTech[i+1]],
               zLatRet[t, i, k, j] == z[t, i, k, j] * rLatentZ(t, i, k, (t+j))
              # zLatRet[t, i, k, j] == z[t, i, k, j]*retCostW(mD, i, t, 
              #                        min(1, max(31,Nz[i,k]-1 - t - j)))
@@ -662,11 +659,13 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   end
 
   @variable(m, xLatRet[t=0:T-1, i=0:I-1, k=0:Kx[i]-1,
-                       j=0:T-1; (t-j) >= Nx[i, k]]
+                       j=0:T-1; 
+                       (t-j)>=Nx[i, k] && !bLoadTech[i+1]]
            )
 
   @constraint(m, xOldRetE[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, 
-                          j=0:N[i]-1; (t-j) >= Nx[i, k]],
+                          j=0:N[i]-1; 
+                          (t-j) >= Nx[i, k] && !bLoadTech[i+1]],
               xLatRet[t, i, k, j] == x[t, i, k, j] * rLatentX(t, i, k, (t-j))
               #xLatRet[t, i, k, j] == x[t, i, k, j]*retCostW(mD, i, t, 
               #                      min(1, max(31,Nx[i,k]-1 - t + j)))
@@ -692,6 +691,7 @@ function genObj!(m::JuMP.Model, mS::modSets, mD::modData)
   zDelay = mD.f.zDelay
   xDelay = mD.f.xDelay
 
+  bLoadTech = mD.ia.bLoadTech
   xOcap = m[:xOcap]
   npv = m[:npv]
   termCost = m[:termCost]
@@ -703,11 +703,12 @@ function genObj!(m::JuMP.Model, mS::modSets, mD::modData)
   @expression(m, xLat, sum(zLatRet[t, i, k, j] 
                            for t in 0:T-1 for i in 0:I-1 for k in 0:Kz[i]-1 
                            for j in 0:N[i]-1 if 
-                           (t+j) >= Nz[i, k] && t >= zDelay[i, k]))
+                           (t+j)>=Nz[i,k] && t>=zDelay[i,k] && !bLoadTech[i+1])
+             )
   @expression(m, zLat, sum(xLatRet[t, i, k, j]
                            for t in 0:T-1 for i in 0:I-1 for k in 0:Kx[i]-1
-                           for j in 0:T-1 if (t-j) >= Nx[i, k]
-                          ))
+                           for j in 0:T-1 if (t-j)>=Nx[i,k] && !bLoadTech[i+1])
+             )
 
    
   @objective(m, Min, (npv 
