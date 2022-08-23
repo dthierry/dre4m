@@ -56,13 +56,12 @@ function zFixCost(mD::modData,
     #: M$/GW
     cA = mD.ca
     iA = mD.ia
-    rfF = mD.rff
     discount = 1/((1.e0 +iA.discountR)^time)
-    rmbf = mD.rmbf
+    rtf = mD.rtf
     #: evaluate retrofit
     #:
-    m = rmbf.mFc[(baseKind, kind)]
-    b = rmbf.bFc[(baseKind, kind)]
+    m = rtf.mFc[(baseKind, kind)]
+    b = rtf.bFc[(baseKind, kind)]
     (multiplier, baseFuel) = (1.e0, baseKind)
     if m >= 0
         multiplier = m
@@ -81,14 +80,13 @@ function zVarCost(mD::modData,
     #: M$/GWh
     cA = mD.ca
     iA = mD.ia
-    rfF = mD.rff
-    rmbf = mD.rmbf
+    rtf = mD.rtf
     discount = 1/((1.e0 +iA.discountR)^time)
 
     #: evaluate retrofit
     #:
-    m = rmbf.mVc[(baseKind, kind)]
-    b = rmbf.bVc[(baseKind, kind)]
+    m = rtf.mVc[(baseKind, kind)]
+    b = rtf.bVc[(baseKind, kind)]
     (multiplier, baseFuel) = (1.e0, baseKind)
     if m >= 0
         multiplier = m
@@ -108,12 +106,11 @@ function zCapCost(mD::modData,
     #: M$/GW
     cA = mD.ca
     iA = mD.ia
-    rfF = mD.rff
-    rmbf = mD.rmbf
+    rtf = mD.rtf
     #discount = discount already comes from source
     #: evaluate retrofit
-    m = rmbf.mCc[(baseKind, kind)]
-    b = rmbf.bCc[(baseKind, kind)]
+    m = rtf.mCc[(baseKind, kind)]
+    b = rtf.bCc[(baseKind, kind)]
     (multiplier, baseFuel) = (1.e0, baseKind)
     if m >= 0
         multiplier = m
@@ -180,15 +177,14 @@ function heatRateZ(mD::modData, baseKind::Int64, kind::Int64,
                    age::Int64, time::Int64, maxBase::Int64)
     tA = mD.ta
     iA = mD.ia
-    rfF = mD.rff
-    rmbf = mD.rmbf
+    rtf = mD.rtf
     if age < time # this case does not exists
         return 0
     else
         #: evaluate retrofit
         #:
-        m = rmbf.mHr[(baseKind, kind)]
-        b = rmbf.bHr[(baseKind, kind)]
+        m = rtf.mHr[(baseKind, kind)]
+        b = rtf.bHr[(baseKind, kind)]
         (multiplier, baseFuel) = (1.e0, baseKind)
         if m >= 0
             multiplier = m
@@ -209,7 +205,6 @@ function heatRateX(mD::modData, baseKind::Int64, kind::Int64,
                    age::Int64, time::Int64)
   tA = mD.ta
   iA = mD.ia
-  xDelay = mD.f.xDelay
   if time < age
     return 0
   end
@@ -247,12 +242,11 @@ function carbonIntZ(mD::modData,
                     baseKind::Int64, kind::Int64=-1)
     tA = mD.ta
     iA = mD.ia
-    rfF = mD.rff
-    rmbf = mD.rmbf
+    rtf = mD.rtf
     #: evaluate retrofit
     #:
-    m = rmbf.mEm[(baseKind, kind)]
-    b = rmbf.bEm[(baseKind, kind)]
+    m = rtf.mEm[(baseKind, kind)]
+    b = rtf.bEm[(baseKind, kind)]
     (multiplier, baseFuel) = (1.e0, baseKind)
     if m >= 0
         multiplier = m
@@ -269,12 +263,11 @@ function fuelCostZ(mD::modData,
     tA = mD.ta
     cA = mD.ca
     iA = mD.ia
-    rfF = mD.rff
-    rmbf = mD.rmbf
+    rtf = mD.rtf
     discount = 1/((1.e0 +iA.discountR)^time)
     #: evaluate retrofit
-    m = rmbf.mFu[(baseKind, kind)]
-    b = rmbf.bFu[(baseKind, kind)]
+    m = rtf.mFu[(baseKind, kind)]
+    b = rtf.bFu[(baseKind, kind)]
     (multiplier, baseFuel) = (1.e0, baseKind)
     if m >= 0
         multiplier = m

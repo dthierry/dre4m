@@ -166,7 +166,9 @@ mutable struct invrAttr
 end
 
 # we keep the rf function but the fallback goes to the matrix
-struct retMbF
+struct absForm
+    delay
+    servLinc
     mCc
     mFc
     mVc
@@ -180,7 +182,7 @@ struct retMbF
     bHr
     bEm
     bFu
-    function retMbF(inputFile::String)
+    function absForm(inputFile::String, kRef::String, m9Ref::String)
         mCc = Dict((0,0)=>-9999e0)
         mFc = Dict((0,0)=>-9999e0)
         mVc = Dict((0,0)=>-9999e0)
@@ -194,24 +196,30 @@ struct retMbF
         bHr = Dict((0,0)=>-9999)
         bEm = Dict((0,0)=>-9999)
         bFu = Dict((0,0)=>-9999)
+        
+        delay = Dict((0,0)=>0) #: leading time
+        sLinc = Dict((0,0)=>0e0) 
+
         XLSX.openxlsx(inputFile, mode="r") do xf
+            #: read the reference cells
             sR = xf["reference"] 
+            kIdx = sR[kRef] # this was B22
+            matIdx = sR[m9Ref]  # this was B27
+
+            #: use the references to read the actual matrix 
             s = xf["invrAttr"]
-            #matIdx = sR["B1"]
-            #kIdx = sR["B1"]
-            #
-            matIdx = "C29:P50" 
-            kIdx = "G11:G21"
             kinds_z = s[kIdx]
             In = length(kinds_z)
-
-
+            
+            #:
             mat9999 = s[matIdx]
             offset = 1
             i = 0
             for kn in kinds_z
                 k = 0
                 for j in (offset+1):(offset+kn)
+                    delay[(i, k)] = mat9999[j,1]>0 ? mat9999[j,1] : 0
+                    sLinc[(i, k)] = mat9999[j,2]>0 ? mat9999[j,2] : 0
                     mCc[(i, k)] = mat9999[j, 3]
                     bCc[(i, k)] = floor(mat9999[j, 4])
                     mVc[(i, k)] = mat9999[j, 5]
@@ -230,7 +238,24 @@ struct retMbF
                 i += 1
             end
         end
-        new(mCc, mFc, mVc, mHr, mEm, mFu, bCc, bFc, bVc, bHr, bEm, bFu)
+        new(delay,
+            sLinc,
+            mCc, 
+            mFc, 
+            mVc, 
+            mHr, 
+            mEm, 
+            mFu, 
+            bCc, 
+            bFc, 
+            bVc, 
+            bHr, 
+            bEm, 
+            bFu)
     end
 end
+
+
+
+##
 

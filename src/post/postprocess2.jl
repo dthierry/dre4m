@@ -7,8 +7,7 @@
 using XLSX
 using JuMP
 using Dates
-function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
-                  )
+function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
   fname = pr.fname
   T = mS.T
   I = mS.I
@@ -16,13 +15,16 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
   Kz = mS.Kz
   Kx = mS.Kx
 
-  xDelay = mD.f.xDelay
-  zDelay = mD.f.zDelay
+  xDelay = mD.nwf.delay
+  zDelay = mD.rtf.delay
+
   fuelBased = mD.ia.fuelBased
   co2Based = mD.ia.co2Based
   bLoadTech = mD.ia.bLoadTech
+
   initCap = mD.ta.initCap
   d = mD.ta.nachF
+
   maxDelay = maximum(values(xDelay))
   cFactW = mD.ta.cFac
   size_cf = size(cFactW)
@@ -115,8 +117,9 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl
   wLat = m[:wLat]
   zLat = m[:zLat]
   xLat = m[:xLat]
-  kinds_z = mD.f.kinds_z
-  kinds_x = mD.f.kinds_x
+
+  kinds_z = mD.ia.kinds_z
+  kinds_x = mD.ia.kinds_x
 
   open(fname*"_kinds.txt", "w") do file
     write(file, "kinds_z\n")

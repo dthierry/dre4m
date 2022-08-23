@@ -23,8 +23,8 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
     Kz = mS.Kz
     Kx = mS.Kx
 
-    zDelay = mD.f.zDelay
-    xDelay = mD.f.xDelay 
+    zDelay = mD.rtf.delay
+    xDelay = mD.nwf.delay 
 
 
     for i in 0:I-1
@@ -688,10 +688,10 @@ function genObj!(m::JuMP.Model, mS::modSets, mD::modData)
   Nz = mS.Nz
   Kz = mS.Kz
   Kx = mS.Kx
-  zDelay = mD.f.zDelay
-  xDelay = mD.f.xDelay
+  zDelay = mD.rtf.delay
+  xDelay = mD.nwf.delay
 
-  bLoadTech = mD.ia.bLoadTech
+   bLoadTech = mD.ia.bLoadTech
   xOcap = m[:xOcap]
   npv = m[:npv]
   termCost = m[:termCost]
@@ -727,7 +727,7 @@ function fixDelayed0!(m::JuMP.Model, mS::modSets, mD::modData)
   x = m[:x]
   I = mS.I
   Kx = mS.Kx
-  xDelay = mD.f.xDelay
+  xDelay = mD.nwf.delay
   #: find the maximum delay
   maxDelay = maximum(values(xDelay))
   for t in -maxDelay:-1
@@ -749,8 +749,7 @@ function gridConWind!(
         m::JuMP.Model, 
         mS::modSets, 
         baseIdx::Int64,
-        specRatio::Dict{Int64, Float64}
-    )
+        specRatio::Dict{Int64, Float64})
     xAlloc = m[:xAlloc]
     T = mS.T
     Kx = mS.Kx
