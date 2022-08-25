@@ -124,6 +124,8 @@ mutable struct invrAttr
     co2Based::Array{Bool}
     bLoadTech::Array{Bool}
 
+    ninput::Array{Int64}
+
     # util_cfs = capacity_factors
     #: Discount rate
     discountR::Float64
@@ -147,6 +149,8 @@ mutable struct invrAttr
             cb = s[sR["B25"]]
             bl = s[sR["B26"]]
 
+            ni = s[sR["B27"]]
+
             dr = s[sR["B19"]]
             hri = s[sR["B20"]]
             lp = s[sR["B21"]]
@@ -158,6 +162,7 @@ mutable struct invrAttr
                 fb,
                 cb,
                 bl,
+                ni,
                 dr, 
                 hri, 
                 lp)

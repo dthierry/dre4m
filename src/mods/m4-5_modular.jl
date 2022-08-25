@@ -22,6 +22,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
     Nz = mS.Nz
     Kz = mS.Kz
     Kx = mS.Kx
+    servLife = mD.ia.servLife
 
     zDelay = mD.rtf.delay
     xDelay = mD.nwf.delay 
@@ -50,9 +51,6 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
     size_cf = size(cFactW)
     cFactZ = zeros((size_cf[1], size_cf[2], 1))
     cFactX = zeros((size_cf[1], size_cf[2], 1))
-    #cFactZ = [for i=0:I-1  for j=0:N[i]-1]
-    #cFactZ = mD.ta.cFact
-    #cFactX = mD.ta.cFact
 
     jrnl = j_log_f
     pr.caller = @__FILE__
@@ -278,6 +276,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
                      j = 0:T-1; t>=(j+xDelay[i, k])],
                 x[t+1, i, k, j] == x[t, i, k, j] - ux[t, i, k, j]
                )
+
     # don't allow new assets to be retired at 0
     @constraint(m,
                 initial_w_E[i = 0:I-1, j = 0:N[i]-1],
@@ -374,7 +373,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
               heat_w_E[t=0:T-1, i=0:I-1, 
                        j=0:N[i]-1; fuelBased[i+1]],
               heat_w[t, i, j] == 
-              Wgen[t, i, j] * heatRateW(mD, i, j+t, t, N[i]-1)
+              Wgen[t, i, j] * wHeatRate(mD, i, j, t)
              )
 
 
@@ -383,7 +382,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
               heat_z_E[t = 0:T-1, i = 0:I-1, k = 0:Kz[i]-1, 
                        j = 0:N[i]-1; fuelBased[i+1]],
               heat_z[t, i, k, j] == 
-              Zgen[t, i, k, j] * heatRateZ(mD, i, k, j+t, t, N[i]-1)
+              Zgen[t, i, k, j] * zHeatRate(mD, i, k, j, t)
              )
 
   # the actual age is t-j
@@ -391,38 +390,38 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
               heat_x_E[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, 
                        j=0:T-1; fuelBased[i+1]],
               heat_x[t, i, k, j] == 
-              Xgen[t, i, k, j] * heatRateX(mD, i, k, t-j, t) 
+              Xgen[t, i, k, j] * xHeatRate(mD, i, k, j, t) 
              )
 
   @constraint(m,
               e_wCon[t=0:T-1, i=0:I-1, 
                      j=0:N[i]-1; co2Based[i+1]],
-              wE[t, i, j] == heat_w[t, i, j] * carbonIntW(mD, i)
+              wE[t, i, j] == heat_w[t, i, j] * wCarbonInt(mD, i)
              )
 
   @constraint(m,
               e_zCon[t = 0:T-1, i = 0:I-1, k =0:Kz[i]-1, 
                      j=0:N[i]-1; co2Based[i+1]],
               zE[t, i, k, j] == 
-              heat_z[t, i, k, j] * carbonIntZ(mD, i, k)
+              heat_z[t, i, k, j] * devCarbonInt(mD, i, k, form="R")
              )
 
   @constraint(m,
               e_xCon[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, 
                      j=0:T-1; co2Based[i+1]],
-              xE[t, i, k, j] == heat_x[t, i, k, j] * carbonIntW(mD, i)
+              xE[t, i, k, j] == 
+              heat_x[t, i, k, j] * devCarbonInt(mD, i, k, form="X")
   )
 
   @constraint(m, xOcapE[t=0:T-1, i=0:I-1],
               xOcap[t, i] == sum(
-                                 xCapCost(mD, i, t) * xAlloc[t, i, k]
-                                 for k in 0:Kx[i]-1
-                                )
-             )
+                                 devCapCost(mD, i, k, t)*xAlloc[t, i, k]
+                                 for k in 0:Kx[i]-1))
 
   @constraint(m, zOcapE[t=0:T-1, i=0:I-1, k=0:Kz[i]-1],
               zOcap[t, i, k] == sum(
-                                 zCapCost(mD, i, k, t) * zTrans[t, i, k, j]
+                                 devCapCost(mD, i, k, t, form="R")*
+                                 zTrans[t, i, k, j]
                                  for j in 0:N[i]-1 
                                 )
              )
@@ -442,7 +441,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   @constraint(m,
               zFixOnM_E[t=0:T-1, i=0:I-1],
               zFixOnM[t, i] == 
-              sum(zFixCost(mD, i, k, t) * Z[t, i, k, j] 
+              sum(devFixCost(mD, i, k, t, form="R") * Z[t, i, k, j] 
                     for k in 0:Kz[i]-1 
                     for j in 0:N[i]-1 #: only related to the base age
                     ))
@@ -450,7 +449,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   @constraint(m,
               zVarOnM_E[t=0:T-1, i=0:I-1],
               zVarOnM[t, i] == 
-              sum(zVarCost(mD, i, k, t) * Zgen[t, i, k, j] 
+              sum(devVarCost(mD, i, k, t, form="R") * Zgen[t, i, k, j] 
                     for k in 0:Kz[i]-1 
                     for j in 0:N[i]-1 #: only related to the base age
                     ))
@@ -467,29 +466,30 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   @constraint(m,
               xVarOndM_E[t=0:T-1, i=0:I-1],
               xVarOnM[t, i] == 
-              sum(wVarCost(mD, i, t) * Xgen[t, i, k, j] 
+              sum(devVarCost(mD, i, k, t) * Xgen[t, i, k, j] 
                   for k in 0:Kx[i]-1 
                   for j in 0:T-1)
              )
 
   @constraint(m, wFuelC_E[t=0:T-1, i=0:I-1; fuelBased[i+1]],
               wFuelC[t, i] == 
-              fuelCostW(mD, i, t) * sum(heat_w[t, i, j]
+              wFuelCost(mD, i, t) * sum(heat_w[t, i, j]
                                 for j in 0:N[i]-1) 
              )
 
   @constraint(m, zFuelC_E[t=0:T-1, i=0:I-1; fuelBased[i+1]],
               zFuelC[t, i] == 
-              sum(fuelCostZ(mD, i, t, k) * heat_z[t, i, k, j]
+              sum(devFuelCost(mD, i, k, t, form="R") * heat_z[t, i, k, j]
               for k in 0:Kz[i]-1 
               for j in 0:N[i]-1)
              )
 
   @constraint(m, xFuelC_E[t=0:T-1, i=0:I-1; fuelBased[i+1]],
               xFuelC[t, i] == 
-              fuelCostW(mD, i, t) * sum(heat_x[t, i, k, j] 
-                                                for k in 0:Kx[i]-1
-                                                for j in 0:T-1)
+              sum(devFuelCost(mD, i, k, t, form="X") * 
+                  heat_x[t, i, k, j] 
+                  for k in 0:Kx[i]-1 
+                  for j in 0:T-1)
              )
 
   @constraint(m, co2OverallYrE[t=0:T-1],
@@ -514,7 +514,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
   @constraint(m, wRet_E[i=0:I-1, j=0:N[i]-1],
               wRet[i, j] == 
               sum(
-              (retCostW(mD, i, t, j+t) + 365*24*saleLost(mD, i, t, j)) 
+              (retCost(mD, i, t, j+t) + 365*24*saleLost(mD, i, t, j)) 
               * uw[t, i, j] for t in 0:T-1)
              )
 
@@ -522,7 +522,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
                         j=0:N[i]-1],
               zRet[i, k, j] 
               == sum(
-              (retCostW(mD, i, t, j+t) + 365*24*saleLost(mD, i, t, j)) 
+              (retCost(mD, i, t, j+t) + 365*24*saleLost(mD, i, t, j)) 
               * uz[t, i, k, j] for t in 0:T-1 if t >= zDelay[i,k])
               )
 
@@ -531,7 +531,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
                         j=0:T-1],
               xRet[i, k, j] == 
               sum(
-              (retCostW(mD, i, t, t-j) + 365*24*saleLost(mD, i, t, j))
+              (retCost(mD, i, t, t-j) + 365*24*saleLost(mD, i, t, j))
               * ux[t, i, k, j] for t in 0:T-1 if t >= (j+xDelay[i, k]))
              )
 
@@ -579,7 +579,7 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
 
   @constraint(m, termCwE[i=0:I-1, j=0:N[i]-1],
               termCw[i, j] == 
-              (retCostW(mD, i, T-1, min(j, N[i]-1)) + 
+              (retCost(mD, i, T-1, min(j+T-1, N[i]-1)) + 
                 365*24*saleLost(mD, i, T-1, j)
               )
               * W[T-1, i, j] 
@@ -589,8 +589,8 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
                          j=0:T-1],
               termCx[i, k, j] == 
               # retCostW(mD, T-1, i, j) * 
-              ( retCostW(mD, i, T-1, j) +
-                365*24*saleLost(mD, i, T-1, j) 
+              ( retCost(mD, i, T-1, T-1-j) +
+                365*24*saleLost(mD, i, T-1, T-1-j) 
               ) *
               X[T-1, i, k, j]
              )
@@ -599,11 +599,12 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
                          j=0:N[i]-1],
               termCz[i, k, j] == 
               (
-                retCostW(mD, i, T-1, min(j, N[i]-1)) + 
-                365*24*saleLost(mD, i, T-1, j)
+                retCost(mD, i, T-1, min(j+T-1, N[i]-1)) + 
+                365*24*saleLost(mD, i, T-1, T-1-j)
               ) * Z[T-1, i, k, j]
              )
-
+    #: not accountable for investment decisions made before the 
+    # time horizon
   @constraint(m, termCE,
               termCost ==
               #sum(termCw[i, j] 
@@ -621,23 +622,28 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
              )
 
   function rLatentW(time, kind, age)
-      return retCostW(mD, kind, 1, 1) * exp((age-N[kind])/N[kind])
+      sL = servLife
+      return retCost(mD, kind, 1, -1)* exp((age-sL[kind+1])/sL[kind+1])
       # retirementCost_age_1 * exp((age-servLife)/servLife)
   end
 
   @variable(m, wLatRet[t=0:T-1, i=0:I-1,
-                       j=0:N[i]-1; (t+j) >= N[i] && !bLoadTech[i+1]])
+                       j=0:N[i]-1; 
+                       (t+j) >= servLife[i+1] && !bLoadTech[i+1]])
 
   @constraint(m, wOldRetE[t=0:T-1, i=0:I-1, 
-                          j=0:N[i]-1; (t+j)>=N[i] && !bLoadTech[i+1]],
+                          j=0:N[i]-1; 
+                          (t+j)>=servLife[i+1] && !bLoadTech[i+1]],
               wLatRet[t,i,j] == w[t, i, j] * rLatentW(t, i, (t+j))
               #wLatRet[t,i,j] == w[t, i, j] * retCostW(mD, i, t, 
               #                  min(1, max(31,N[i]-1 - t - j))))
              )
   #
   function rLatentZ(time, baseKind, kind, age)
-      return retCostW(mD, kind, 1, 1)*
-      exp((age-Nz[baseKind, kind])/Nz[baseKind, kind])
+      si = mD.rtf.servLinc
+      sL = (i, k) -> floor(Int, servLife[i+1]*(1+si[i, k]))
+      return retCost(mD, kind, 1, -1)*
+      exp((age-sL(baseKind, kind))/sL(baseKind, kind))
   end
 
   @variable(m, zLatRet[t=0:T-1, i=0:I-1, k=0:Kz[i]-1,
@@ -654,8 +660,10 @@ function genModel(mS::modSets, mD::modData, pr::prJrnl)::JuMP.Model
              )
   #               
   function rLatentX(time, baseKind, kind, age)
-      return retCostW(mD, kind, 1, 1)*
-      exp((age-Nx[baseKind, kind])/Nx[baseKind, kind])
+      si = mD.nwf.servLinc
+      sL = (i, k) -> floor(Int, servLife[i+1]*(1+si[i, k]))
+      return retCost(mD, kind, 1, -1)*
+      exp((age-sL(baseKind, kind))/sL(baseKind, kind))
   end
 
   @variable(m, xLatRet[t=0:T-1, i=0:I-1, k=0:Kx[i]-1,

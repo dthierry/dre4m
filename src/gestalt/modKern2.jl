@@ -37,7 +37,8 @@ struct modSets
     Kz = Dict(i => kinds_z[i+1] for i in 0:I-1)
     Kx = Dict(i => kinds_x[i+1] for i in 0:I-1)
 
-    N = Dict(i => servLife[i+1] for i in 0:I-1)
+    N = Dict(i => ia.ninput[i+1] for i in 0:I-1)
+    # N = Dict(i => servLife[i+1] for i in 0:I-1)
     Nz = Dict((i,k) => N[i] 
               + floor(Int, servLife[i+1]*zServLinc[i, k]) 
             for i in 0:I-1 for k in 0:Kz[i]-1)

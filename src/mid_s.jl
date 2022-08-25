@@ -9,11 +9,12 @@ module mid_s
   include("./bark/bark.jl")
   include("./matrix/mat_struct2.jl")
   include("./gestalt/props.jl")
-  include("./gestalt/gridForm.jl")
-  include("./gestalt/retrof.jl")
+  #include("./gestalt/retrof.jl")
   include("./gestalt/modKern2.jl")
   include("./pre/preprocess.jl")
   include("./coef/coef_custom2.jl")
   include("./mods/m4-5_modular.jl")
   include("./post/postprocess2.jl")
+  version = VersionNumber(0, 4, 5)
+  @info "RAIDS $(version) by DT@2022"
 end
