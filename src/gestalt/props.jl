@@ -25,7 +25,7 @@ end
 function jrnlst!(pr::prJrnl, jMode::jrnlMode)
   fname = pr.fname
   if jMode == j_start
-    @info "log in some data"
+    @info "Log start."
     initialTime = Dates.now()  # to log the results, I guess
     pr.initT = initialTime
     fname = Dates.format(initialTime, "eyymmdd-HHMMSS")

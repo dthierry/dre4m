@@ -49,14 +49,11 @@ mutable struct timeAttr
     function timeAttr(inputFile::String)
         XLSX.openxlsx(inputFile, mode="r") do xf
             # set sheet
-            #
-        sR = xf["reference"]
-        icf = sR["C2"]
-        nf = sR["C3"]
-        hrf = sR["C5"]
-        hr2f = sR["C6"]
-        @info "timeAttr facts are as follows: 
-        icf: $(icf) nf: $(nf) hrf: $(hrf)  hr2: $(hr2f)"
+            sR = xf["reference"]
+            icf = sR["C2"]
+            nf = sR["C3"]
+            hrf = sR["C5"]
+            hr2f = sR["C6"]
             s = xf["timeAttr"]
             # set arrays
             ic = s[sR["B2"]].*icf # initial
@@ -64,7 +61,6 @@ mutable struct timeAttr
             cf = s[sR["B4"]] # cap fact
             ho = s[sR["B5"]].*hrf # vint hr
             hn = s[sR["B6"]].*hr2f # new hr
-
             new(ic,
                 nh,
                 cf,
@@ -96,9 +92,6 @@ mutable struct costAttr
             esf = sR["C11"]
             fuf = sR["C12"]
             dcf = sR["C13"]
-            @info "costAttr facts are as follows: 
-            cc: $(ccf) fc: $(fcf) vc: $(vcf)  es: $(esf)
-            fu: $(fuf) dc: $(dcf)"
             # set sheet
             s = xf["costAttr"]
             # set arrays
