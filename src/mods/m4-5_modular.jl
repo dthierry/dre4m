@@ -806,13 +806,15 @@ function EmConBudget!(
     X = m[:X]
     T = mS.T
     #: magic numbers
-    co22010 = 2.2584E+09
+    co22010 = 2_258_639_000.00
+    # 2.26E+06
     # co2_2010_2015 = 10_515_700_000.0
     # Greenhouse Gas Inventory Data Explorer
     co2_2010_2019 = 19_315_983_000.0 # using the epa GHC
     co22050 = co22010 * 0.29
     #: Last term is a trapezoid minus the 2010-2015 gap
-    @info("The budget: $((co22010 + co22050) * 0.5 * 41 - co2_2010_2019)")
+    @info("The budget: $((co22010 + co22050) * 0.5 * 41 -
+                         co2_2010_2019)")
     co2OverallYr = m[:co2OverallYr]
     @constraint(m, co2Budget,
                 sum(co2OverallYr[t] for t in 0:T-1) <=
@@ -843,9 +845,9 @@ function gridConUppahBound!(m::JuMP.Model, mS::modSets)
   Kx = mS.Kx
   xAlloc = m[:xAlloc]
   upperBoundDict = Dict(
-                        "B" => 1000/1e3 * 0.59,
-                        "N" => 1000/1e3 * 0.898,
-                        "H" => 1000/1e3 * 0.42)
+                        "B" => 1000/1e3,
+                        "N" => 1000/1e3,
+                        "H" => 1000/1e3)
   #: Just do it directly using bounds on the damn variables
   for tech in keys(upperBoundDict)
     id = techToId[tech]

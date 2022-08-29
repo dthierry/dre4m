@@ -30,7 +30,9 @@ suffix["ux"] = "Ret. new"
 def export_legend(legend, filename="legend.png"):
     fig  = legend.figure
     fig.canvas.draw()
-    bbox  = legend.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+    bbox  = legend.get_window_extent().transformed(
+        fig.dpi_scale_trans.inverted()
+    )
     fig.savefig(filename, dpi="figure", bbox_inches=bbox)
 
 def stacksSingle(l: list, dmax: float) -> None:
@@ -71,12 +73,24 @@ def allStacked(l: dict, dmax: float) -> None:
     all_colours = []
     all_labels = []
     all_hatches = []
-
-    norm = nrm(vmin=0, vmax=I*min(1, max(kinds_z)))
+    print(I)
+    print(kinds_z)
+    print(kinds_x)
+    print("\n\n")
+    print(I*min(1, max( max(kinds_z), max(kinds_x))))
+    norm = nrm(vmin=0, vmax=I*min(1,
+                                  max(
+                                      max(kinds_z), max(kinds_x)
+                                  )
+                                  )
+               )
     cmap = plt.get_cmap(CMAP0)
     # unpack the dataframes into a list of columns
     for name in namesW:
-        df = l[name] #.shift(fill_value=0) if name == "z" else l[name]
+        try:
+            df = l[name] #.shift(fill_value=0) if name == "z" else l[name]
+        except KeyError:
+            continue
         all_columns += [df[col] for col in df.columns]
         if name == "w":  # split the name into just "number, "
             nameSplits = [col.split("_")[1] for col in df.columns]
@@ -87,10 +101,10 @@ def allStacked(l: dict, dmax: float) -> None:
             all_labels += [tName[int(nameS[0])] + " " + nameS[1] + " " + suffix[name] for nameS in nameSplits]
             hatch = "/" if name == "z" else ".."
             all_hatches += [hatch*(int(nameS[1]) + 1) for nameS in nameSplits]
-        #all_labels += [tName[int(nameS[0])] + " " + suffix[name]
-        #        for nameS in nameSplits]
         colourVal = [int(col.split("_")[1]) for col in df.columns]
+        print(colourVal)
         all_colours += [cmap(norm(cv)) for cv in colourVal]
+    print(all_colours)
     print(all_hatches)
     # Create subplots
     f, a = plt.subplots(dpi=200)
@@ -152,41 +166,26 @@ def allStacked(l: dict, dmax: float) -> None:
     print(excelFileName)
     efn = excelFileName.split(".")[1].replace("/", "")
     print(efn)
-    f.savefig(efn +"_all.png", format="png", bbox_inches="tight")
-    legend = a.legend(loc=0)
+    f.savefig(efn +"_all.png",
+              format="png",
+              bbox_inches="tight")
+    legend = a.legend(loc="lower left",
+        bbox_to_anchor=(1.0, 0.0)
+    )
     export_legend(legend,
-                  "legend_" + name + "_" + efn + "_try2" + ".png")
-    #legend = a.legend()
-    legend = a.legend(bbox_to_anchor=(1.0, 1.1))
+                  "legend_" + name + "_" + efn + "_" + ".png")
+    ds = GetEmLine()
+    bget = 40413725355e0
+    legend.remove()
     f.canvas.draw()
-    bbox = legend.get_window_extent().transformed(f.dpi_scale_trans.inverted())
-    #legend_bbox = legend.get_tightbbox(f.canvas.get_renderer())
-    #legend_bbox = legend_bbox.transformed(f.dpi_scale_trans.inverted())
-    #legend_fig, legend_ax = plt.subplots(figsize=(legend_bbox.width, legend_bbox.height))
-
-    #legend_squared = legend_ax.legend(
-    #        a.get_legend_handles_labels(),
-            #bbox_to_anchor=(0, 0, 1, 1),
-            #bbox_transform=legend_fig.transFigure,
-            #frameon=False,
-            #fancybox=None,
-            #shadow=False,
-            #ncol=1,
-            #mode='expand',
-    #        )
-
-    # Remove everything else from the legend's figure
-    #legend_ax.axis('off')
-
-    # Save the legend as a separate figure
-    legend_figpath = 'graph-legend.png'
-    print(f"Saving to: {legend_figpath}")
-    #f.savefig(
-    #    legend_figpath,
-    #    bbox_inches='tight',
-    #    bbox_extra_artists=[legend_squared],
-    #)
-    f.savefig(legend_figpath, bbox_inches=bbox)
+    a2 = a.twinx()
+    a2.plot(ds.index + 2020,
+            bget - ds, marker="x", color="crimson")
+    a2.set_ylabel("Budget tCO2")
+    a2.yaxis.label.set_color("crimson")
+    f.savefig(efn +"_twoliner_.png",
+              format="png",
+              bbox_inches="tight")
 
 def sBars(l: list) -> None:
     """ Generates a single bar stacked plot for every name """
@@ -238,15 +237,52 @@ def sBars(l: list) -> None:
         export_legend(legend,
                 "legend_" + name + "_" + efn + "_sBarSingle" + ".png")
 
+def GetEmLine():
+    lenFuelBased = 0
+    name1 = []
+    for name in namesW:
+        kind = kinds[name]
+        for i in range(I):
+            if not fuelKind[i]:
+                continue
+            for k in range(kind[i]):
+                if name == "w":
+                    sheet0 = name + "e_" + str(i)
+                    lenFuelBased += 1
+                else:
+                    sheet0 = name + "e_" + str(i) + "_" + str(k)
+                name1.append(sheet0)
+
+    norm = nrm(vmin=0, vmax=lenFuelBased)
+    df = pd.DataFrame()
+    em_file = getFiles("*_em.xlsx")
+    print("Using file {}".format(em_file))
+    for name in name1:
+        d = pd.read_excel(em_file, sheet_name=name, index_col=0)
+        if name == name1[0]:
+            df = pd.DataFrame(d.sum(axis=1), columns=[name])
+        else:
+            df.insert(1, name, d.sum(axis=1))
+    ds = df.sum(axis=1)
+    acc = 0e0
+    for k in df.iterrows():
+        acc += ds[k[0]]
+        ds[k[0]] = acc
+    return ds
+    #
+
 
 def main():
     l, dmax = loadExcelOveralls()
     allStacked(l, dmax)
     # stacksSingle(l, dmax)
     # sBars(l)
-    return l, dmax
+    #return l, dmax
+    #pltEmLine()
 
 
 if __name__ == "__main__":
-    l, dmax = main()
+    # l, dmax = main()
+    main()
+
 

@@ -20,8 +20,11 @@ def loadExcelOveralls(shift: bool=False) -> Tuple[dict, float]:
     l = {}
     for name in names:
         count = 0
+        kind = kinds[name]
+        if max(kind) == 0:
+            continue
         for i in range(I):
-            kind = kinds[name]
+            print(name, kind)
             r = range(kind[i])
             for k in r:
                 suffix = "" if name in ["w", "uw"] else "_" + str(k)
