@@ -522,7 +522,7 @@ function genModel(mS::modSets,
   @constraint(m, wRet_E[i=0:I-1, j=0:N[i]-1],
               wRet[i, j] ==
               sum(
-              (retCost(mD, i, t, j+t) + 365*24*saleLost(mD, i, t, j))
+              (retCost(mD, i, t, j+t) + 365*24*saleLost(mD, i, t, j+t))
               * uw[t, i, j] for t in 0:T-1)
              )
 
@@ -530,7 +530,7 @@ function genModel(mS::modSets,
                         j=0:N[i]-1],
               zRet[i, k, j]
               == sum(
-              (retCost(mD, i, t, j+t) + 365*24*saleLost(mD, i, t, j))
+              (retCost(mD, i, t, j+t) + 365*24*saleLost(mD, i, t, j+t))
               * uz[t, i, k, j] for t in 0:T-1 if t >= zDelay[i,k])
               )
 
@@ -539,7 +539,7 @@ function genModel(mS::modSets,
                         j=0:T-1],
               xRet[i, k, j] ==
               sum(
-              (retCost(mD, i, t, t-j) + 365*24*saleLost(mD, i, t, j))
+              (retCost(mD, i, t, t-j) + 365*24*saleLost(mD, i, t, t-j))
               * ux[t, i, k, j] for t in 0:T-1 if t >= (j+xDelay[i, k]))
              )
 
@@ -603,7 +603,7 @@ function genModel(mS::modSets,
   @constraint(m, termCwE[i=0:I-1, j=0:N[i]-1],
               termCw[i, j] ==
               (retCost(mD, i, T-1, min(j+T-1, N[i]-1)) +
-               365*24*saleLost(mD, i, T-1, j)
+               365*24*saleLost(mD, i, T-1, min(j+T-1, N[i]-1))
               )
               * W[T-1, i, j]
              )
@@ -611,7 +611,7 @@ function genModel(mS::modSets,
   @constraint(m, termCxE[i=0:I-1, k=0:Kx[i]-1,
                          j=0:T-1],
               termCx[i, k, j] ==
-              ( retCost(mD, i, T-1, T-1-j) +
+              (retCost(mD, i, T-1, T-1-j) +
                365*24*saleLost(mD, i, T-1, T-1-j)
               ) *
               X[T-1, i, k, j]
@@ -622,7 +622,7 @@ function genModel(mS::modSets,
               termCz[i, k, j] ==
               (
                 retCost(mD, i, T-1, min(j+T-1, N[i]-1)) +
-                365*24*saleLost(mD, i, T-1, T-1-j)
+                365*24*saleLost(mD, i, T-1, min(j+T-1, N[i]-1))
               ) * Z[T-1, i, k, j]
              )
     #: not accountable for investment decisions made before the
@@ -663,9 +663,11 @@ function genModel(mS::modSets,
   #
   function rLatentZ(time, baseKind, kind, age)
       si = mD.rtf.servLinc
-      sL = (i, k) -> floor(Int, servLife[i+1]*(1+si[i, k]))
-      return retCost(mD, kind, 1, -1)*
-      exp((age-sL(baseKind, kind))/sL(baseKind, kind))
+      #sL = (i, k) -> floor(Int, servLife[i+1]*(1+si[i, k]))
+      #return retCost(mD, kind, 1, -1)*
+      #exp((age-sL(baseKind, kind))/sL(baseKind, kind))
+      sL = servLife # same as w
+      return retCost(mD, kind, 1, -1)* exp((age-sL[kind+1])/sL[kind+1])
   end
 
   @variable(m, zLatRet[t=0:T-1, i=0:I-1, k=0:Kz[i]-1,
@@ -740,11 +742,11 @@ function genObj!(m::JuMP.Model, mS::modSets, mD::modData)
                            for j in 0:T-1 if (t-j)>=Nx[i,k] && !bLoadTech[i+1])
              )
 
-
+    lfact = 1e-2
   @objective(m, Min, (npv
-                      + wLat
-                      + xLat
-                      + zLat
+                      + wLat*lfact
+                      + xLat*lfact
+                      + zLat*lfact
                       + (1e-6)*termCost
                      )/1e3)
 end

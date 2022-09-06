@@ -636,13 +636,14 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
         shn = 1
         sheet = xf[shn]
         XLSX.rename!(sheet, "stats")
-        sheet["A1"] = "timing"
+        sheet["A1"] = "soltiming"
         sheet["A2"] = "objective"
         sheet["A3"] = "npv"
         sheet["A4"] = "retire"
         sheet["A5"] = "terminal"
         sheet["A6"] = "emissions"
         sheet["A7"] = "filename"
+        sheet["A8"] = "engine"
 
         sheet["B1"] = solve_time(m)
         sheet["B2"] = objective_value(m)
@@ -655,13 +656,14 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
         sheet["B4"] = wrsum + rrsum + xrsum 
         sheet["B5"] = value(termCost)
         sheet["B6"] = sum(value(co2OverallYr[t]) for t in 0:T-1)
-        fname0 = Dates.format(pr.initT, "eyymmdd-HHMMSS")
-        sheet["B7"] = fname0
+        fname0 = Dates.format(pr.initT, "eyymmdd-HH_MM_SS")
+        sheet["B7"] = fname0*pr.tag
+        sheet["B8"] = string(raids.version)
 
         XLSX.addsheet!(xf)
         shn += 1
         sheet = xf[shn]
-        XLSX.rename!(sheet, "ccost_retro")
+        XLSX.rename!(sheet, "cap_cost_retro")
         sheet["A1"] = "tech"
         sheet["B1"] = "capital M\$"
         row = 2
@@ -673,15 +675,15 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
                                                     for t in 0:T-1)
                 row += 1
             end
-            sheet["A$(row)"] = "sum"
-            sheet["B$(row)"] = no_z ? 0e0 : sum(value.(zOcap))
         end
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_z ? 0e0 : sum(value.(zOcap))
         ####
         XLSX.addsheet!(xf)
         row = 2
         shn+=1
         sheet = xf[shn]
-        XLSX.rename!(sheet, "ccost_new")
+        XLSX.rename!(sheet, "cap_cost_new")
         sheet["A1"] = "tech"
         sheet["B1"] = "capital M\$"
         for i in 0:I-1
@@ -692,16 +694,16 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
                                                     for t in 0:T-1) 
                 row += 1
             end
-            sheet["A$(row)"] = "sum"
-            sheet["B$(row)"] = no_x ? 0e0 : sum(value.(xOcap)) 
         end
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_x ? 0e0 : sum(value.(xOcap)) 
 
         XLSX.addsheet!(xf)
         shn+=1
         sheet = xf[shn]
-        XLSX.rename!(sheet, "old_capacity")
+        XLSX.rename!(sheet, "old_capacity_remain")
         row = 2
-        sheet["A1"] = "cap old (last)"
+        sheet["A1"] = "cap (last point)"
         sheet["B1"] = "GW"
         for i in 0:I-1
             sheet["A$(row)"] = "w_$(i)"
@@ -713,23 +715,28 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
         sheet["A$(row)"] = "sum"
         sheet["B$(row)"] = sum(value.(w)) 
   
+        XLSX.addsheet!(xf)
+        shn += 1
+        sheet = xf[shn]
+        XLSX.rename!(sheet, "old_capacity_ret")
+
         row = 2
-        sheet["C1"] = "retirement old"
-        sheet["D1"] = "GW"
+        sheet["A1"] = "retirement old"
+        sheet["B1"] = "GW"
         for i in 0:I-1
-            sheet["C$(row)"] = "uw_$(i)"
-            sheet["D$(row)"] = sum(value(uw[t, i, j]) 
+            sheet["A$(row)"] = "uw_$(i)"
+            sheet["B$(row)"] = sum(value(uw[t, i, j]) 
                                    for t in 0:T-1 for j in 0:N[i]-1) 
             row += 1
         end
-        sheet["C$(row)"] = "sum"
-        sheet["D$(row)"] = sum(value.(uw)) 
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = sum(value.(uw)) 
 
         XLSX.addsheet!(xf)
         shn+=1
         sheet = xf[shn]
         row = 2
-        XLSX.rename!(sheet, "retrof_cap")
+        XLSX.rename!(sheet, "retro_alloc")
         sheet["A1"] = "allocations retrofit"
         sheet["B1"] = "GW"
         for i in 0:I-1
@@ -743,31 +750,41 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
                                                     for j in 0:N[i]-1) 
                 row += 1
             end
-            sheet["A$(row)"] = "sum"
-            # N[i] because we only consider the years of existing cap
-            sheet["B$(row)"] = no_z ? 0e0 : sum(value.(zTrans))
         end
+
+        sheet["A$(row)"] = "sum"
+        # N[i] because we only consider the years of existing cap
+        sheet["B$(row)"] = no_z ? 0e0 : sum(value.(zTrans))
+
+        XLSX.addsheet!(xf)
+        shn += 1
+        sheet = xf[shn]
+        XLSX.rename!(sheet, "retro_retired")
+
         row = 2
-        sheet["C1"] = "retirement retrofit"
-        sheet["D1"] = "GW"
+        sheet["A1"] = "retirement retrofit"
+        sheet["B1"] = "GW"
         for i in 0:I-1
             #: Existing
             #: RF
             for k in 0:Kz[i]-1
-                sheet["C$(row)"] = "uz_$(i)_$(k)"
-                sheet["D$(row)"] = no_z ? 0 : sum(uzD[t, i, k, j] 
+                sheet["A$(row)"] = "uz_$(i)_$(k)"
+                sheet["B$(row)"] = no_z ? 0 : sum(uzD[t, i, k, j] 
                                                   for t in 0:T-1 
                                                   for j in 0:N[i]-1) 
                 row += 1
             end
-            sheet["C$(row)"] = "sum"
-            sheet["D$(row)"] = no_z ? 0 : sum(values(uzD))
         end
+
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_z ? 0 : sum(values(uzD))
+
         XLSX.addsheet!(xf)
         shn+=1
         sheet = xf[shn]
+
         row = 2
-        XLSX.rename!(sheet, "new_cap")
+        XLSX.rename!(sheet, "new_alloc")
         sheet["A1"] = "allocations new"
         sheet["B1"] = "GW"
         for i in 0:I-1
@@ -778,33 +795,100 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
                                                   for t in 0:T-1) 
                 row += 1
             end
-            sheet["A$(row)"] = "sum"
-            sheet["B$(row)"] = no_x ? 0 : sum(value.(xAlloc))
         end
-
-        row = 2 
-        sheet["C1"] = "retirement new"
-        sheet["D1"] = "GW"
-        for i in 0:I-1
-            #: new
-            for k in 0:Kx[i]-1
-                sheet["C$(row)"] = "ux_$(i)_$(k)"
-                sheet["D$(row)"] = no_x ? 0 : sum(uxD[t, i, k, j] 
-                                                  for t in 0:T-1 
-                                                  for j in 0:T-1) 
-                row += 1
-            end
-            sheet["C$(row)"] = "sum"
-            sheet["D$(row)"] = no_x ? 0 : sum(values(uxD))
-        end
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_x ? 0 : sum(value.(xAlloc))
 
         XLSX.addsheet!(xf)
         shn+=1
         sheet = xf[shn]
-        row = 2
-        XLSX.rename!(sheet, "wVoNm")
+        XLSX.rename!(sheet, "new_retired")
+
+        row = 2 
+        sheet["A1"] = "retirement new"
+        sheet["B1"] = "GW"
+        for i in 0:I-1
+            #: new
+            for k in 0:Kx[i]-1
+                sheet["A$(row)"] = "ux_$(i)_$(k)"
+                sheet["B$(row)"] = no_x ? 0 : sum(uxD[t, i, k, j] 
+                                                  for t in 0:T-1 
+                                                  for j in 0:T-1) 
+                row += 1
+            end
+        end
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_x ? 0 : sum(values(uxD))
+        #################
+        XLSX.addsheet!(xf)
+        shn += 1
+        sheet = xf[shn]
+        XLSX.rename!(sheet, "old_generation")
+        
+        row = 2 
+        sheet["A1"] = "Generation"
+        sheet["B1"] = "GWh"
+        for i in 0:I-1
+            #: new
+            sheet["A$(row)"] = "Wgen_$(i)"
+            sheet["B$(row)"] = sum(value(Wgen[t, i, j]) 
+                                   for t in 0:T-1 
+                                   for j in 0:N[i]-1) 
+            row += 1
+        end
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = sum(value.(Wgen))
+        #################
+        XLSX.addsheet!(xf)
+        shn += 1
+        sheet = xf[shn]
+        XLSX.rename!(sheet, "retro_generation")
+        
+        row = 2 
+        sheet["A1"] = "Generation"
+        sheet["B1"] = "GWh"
+        for i in 0:I-1
+            #: new
+            for k in 0:Kz[i]-1
+                sheet["A$(row)"] = "Zgen_$(i)_$(k)"
+                sheet["B$(row)"] = no_z ? 0 : sum(value(Zgen[t, i, k, j]) 
+                                                  for t in 0:T-1 
+                                                  for j in 0:N[i]-1) 
+                row += 1
+            end
+        end
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_z ? 0 : sum(value.(Zgen))
+        #################
+        XLSX.addsheet!(xf)
+        shn += 1
+        sheet = xf[shn]
+        XLSX.rename!(sheet, "new_generation")
+        
+        row = 2 
+        sheet["A1"] = "Generation"
+        sheet["B1"] = "GWh"
+        for i in 0:I-1
+            #: new
+            for k in 0:Kx[i]-1
+                sheet["A$(row)"] = "Xgen_$(i)_$(k)"
+                sheet["B$(row)"] = no_x ? 0 : sum(value(Xgen[t, i, k, j]) 
+                                                  for t in 0:T-1 
+                                                  for j in 0:T-1) 
+                row += 1
+            end
+        end
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_x ? 0 : sum(value.(Xgen))
+        ####3
+        XLSX.addsheet!(xf)
+        shn += 1
+        sheet = xf[shn]
+
+        XLSX.rename!(sheet, "old_VoNm")
         sheet["A1"] = "tech"
         sheet["B1"] = "M\$"
+        row = 2
         for i in 0:I-1
             sheet["A$(row)"] = "w_$(i)"
             sheet["B$(row)"] = sum(value(wVarOnM[t, i]) for t in 0:T-1)
@@ -814,12 +898,13 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
         sheet["B$(row)"] = sum(value.(wVarOnM))
         ####
         XLSX.addsheet!(xf)
-        shn+=1
+        shn += 1
         sheet = xf[shn]
-        row = 2
-        XLSX.rename!(sheet, "zVoNm")
+        XLSX.rename!(sheet, "retro_VoNm")
+
         sheet["A1"] = "tech"
         sheet["B1"] = "M\$"
+        row = 2
         for i in 0:I-1
             for k in 0:Kz[i]-1
                 sheet["A$(row)"] = "z_$(i)_$(k)"
@@ -827,17 +912,18 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
                                                     for t in 0:T-1)
                 row += 1
             end
-            sheet["A$(row)"] = "sum"
-            sheet["B$(row)"] = no_z ? 0e0 : sum(value.(zVarOnM))
         end
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_z ? 0e0 : sum(value.(zVarOnM))
         ####
         XLSX.addsheet!(xf)
-        shn+=1
+        shn += 1
         sheet = xf[shn]
-        row = 2
-        XLSX.rename!(sheet, "xVoNm")
+        XLSX.rename!(sheet, "new_VoNm")
+
         sheet["A1"] = "tech"
         sheet["B1"] = "M\$"
+        row = 2
         for i in 0:I-1
             for k in 0:Kx[i]-1
                 sheet["A$(row)"] = "x_$(i)_$(k)"
@@ -845,15 +931,17 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
                                                     for t in 0:T-1) 
                 row += 1
             end
-            sheet["A$(row)"] = "sum"
-            sheet["B$(row)"] = no_x ? 0e0 : sum(value.(xVarOnM))
         end
         ####
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_x ? 0e0 : sum(value.(xVarOnM))
+        #### 
         XLSX.addsheet!(xf)
-        shn+=1
+        shn += 1
         sheet = xf[shn]
+        XLSX.rename!(sheet, "old_FoNm")
+
         row = 2
-        XLSX.rename!(sheet, "wFoNm")
         sheet["A1"] = "tech"
         sheet["B1"] = "M\$"
         for i in 0:I-1
@@ -864,13 +952,15 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
         sheet["A$(row)"] = "sum"
         sheet["B$(row)"] = sum(value.(wFixOnM))
         ####
+        #
         XLSX.addsheet!(xf)
         shn+=1
         sheet = xf[shn]
-        row = 2
-        XLSX.rename!(sheet, "zFoNm")
+        XLSX.rename!(sheet, "retro_FoNm")
+        
         sheet["A1"] = "tech"
         sheet["B1"] = "M\$"
+        row = 2
         for i in 0:I-1
             for k in 0:Kz[i]-1
                 sheet["A$(row)"] = "z_$(i)_$(k)"
@@ -878,17 +968,19 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
                                                     for t in 0:T-1)
                 row += 1
             end
-            sheet["A$(row)"] = "sum"
-            sheet["B$(row)"] = no_z ? 0e0 : sum(value.(zFixOnM))
         end
         ####
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_z ? 0e0 : sum(value.(zFixOnM))
+
         XLSX.addsheet!(xf)
-        shn+=1
+        shn += 1
         sheet = xf[shn]
-        row = 2
-        XLSX.rename!(sheet, "xFoNm")
+        XLSX.rename!(sheet, "new_FoNm")
+
         sheet["A1"] = "tech"
         sheet["B1"] = "M\$"
+        row = 2
         for i in 0:I-1
             for k in 0:Kx[i]-1
                 sheet["A$(row)"] = "x_$(i)_$(k)"
@@ -901,14 +993,14 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
         end
 
         ####
-        ####
         XLSX.addsheet!(xf)
-        shn+=1
+        shn += 1
         sheet = xf[shn]
-        row = 2
-        XLSX.rename!(sheet, "wRet")
+        XLSX.rename!(sheet, "old_RetCost")
+
         sheet["A1"] = "tech"
         sheet["B1"] = "M\$"
+        row = 2
         for i in 0:I-1
             sheet["A$(row)"] = "w_$(i)"
             sheet["B$(row)"] = sum(value(wRet[i, j]) for j in 0:N[i]-1)
@@ -917,14 +1009,15 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
         sheet["A$(row)"] = "sum"
         sheet["B$(row)"] = sum(value.(wRet))
         ###
+
         XLSX.addsheet!(xf)
-        ###
-        shn+=1
+        shn += 1
         sheet = xf[shn]
-        row = 2
-        XLSX.rename!(sheet, "zRet")
+        XLSX.rename!(sheet, "retro_RetCost")
+
         sheet["A1"] = "tech"
         sheet["B1"] = "M\$"
+        row = 2
         for i in 0:I-1
             for k in 0:Kz[i]-1
                 sheet["A$(row)"] = "z_$(i)_$(k)"
@@ -932,17 +1025,17 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
                                                     for j in 0:N[i]-1)
                 row += 1
             end
-            sheet["A$(row)"] = "sum"
-            sheet["B$(row)"] = no_z ? 0e0 : sum(value.(zRet))
         end
-        ####
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_z ? 0e0 : sum(value.(zRet))
+
         ###
         XLSX.addsheet!(xf)
-        ###
-        shn+=1
+        shn += 1
         sheet = xf[shn]
+        XLSX.rename!(sheet, "new_RetCost")
+
         row = 2
-        XLSX.rename!(sheet, "xRet")
         sheet["A1"] = "tech"
         sheet["B1"] = "M\$"
         for i in 0:I-1
@@ -952,19 +1045,19 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
                                                     for j in 0:T-1)
                 row += 1
             end
-            sheet["A$(row)"] = "sum"
-            sheet["B$(row)"] = no_z ? 0e0 : sum(value.(xRet))
         end
         ####
-        ####
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_z ? 0e0 : sum(value.(xRet))
+        
         XLSX.addsheet!(xf)
-        ###
-        shn+=1
+        shn += 1
         sheet = xf[shn]
-        row = 2
-        XLSX.rename!(sheet, "fuel&em")
+        XLSX.rename!(sheet, "old_fuel")
+
         sheet["A1"] = "old"
         sheet["B1"] = "M\$"
+        row = 2
         for i in 0:I-1
             if !fuelBased[i+1]
                 continue
@@ -975,94 +1068,126 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
         end
         sheet["A$(row)"] = "sum"
         sheet["B$(row)"] = sum(value.(wFuelC))
+        
+        XLSX.addsheet!(xf)
+        shn += 1
+        sheet = xf[shn]
+        XLSX.rename!(sheet, "retro_fuel")
+
         row = 2
-        sheet["C1"] = "retrofit"
-        sheet["D1"] = "M\$"
+        sheet["A1"] = "retrofit"
+        sheet["B1"] = "M\$"
         for i in 0:I-1
             if !fuelBased[i+1]
                 continue
             end
             for k in 0:Kz[i]-1
-                sheet["C$(row)"] = "z_$(i)_$(k)"
-                sheet["D$(row)"] = no_z ? 0e0 : sum(value(zFuelC[t, i, k]) 
+                sheet["A$(row)"] = "z_$(i)_$(k)"
+                sheet["B$(row)"] = no_z ? 0e0 : sum(value(zFuelC[t, i, k]) 
                                                     for t in 0:T-1)
                 row += 1
             end
-            sheet["C$(row)"] = "sum"
-            sheet["D$(row)"] = no_z ? 0e0 : sum(value.(zFuelC))
         end
+
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_z ? 0e0 : sum(value.(zFuelC))
+
+        XLSX.addsheet!(xf)
+        shn+=1
+        sheet = xf[shn]
+        XLSX.rename!(sheet, "new_fuel")
+
         row = 2
-        sheet["E1"] = "new"
-        sheet["F1"] = "M\$"
+        sheet["A1"] = "new"
+        sheet["B1"] = "M\$"
         for i in 0:I-1
             if !fuelBased[i+1]
                 continue
             end
             for k in 0:Kx[i]-1
-                sheet["E$(row)"] = "x_$(i)_$(k)"
-                sheet["F$(row)"] = no_x ? 0e0 : sum(value(xFuelC[t, i, k]) 
+                sheet["A$(row)"] = "x_$(i)_$(k)"
+                sheet["B$(row)"] = no_x ? 0e0 : sum(value(xFuelC[t, i, k]) 
                                                     for t in 0:T-1)
                 row += 1
             end
-            sheet["E$(row)"] = "sum"
-            sheet["F$(row)"] = no_x ? 0e0 : sum(value.(xFuelC))
         end
         ####
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_x ? 0e0 : sum(value.(xFuelC))
+        
+        XLSX.addsheet!(xf)
+        shn += 1
+        sheet = xf[shn]
+        XLSX.rename!(sheet, "old_co2")
+
         row = 2
-        sheet["G1"] = "old"
-        sheet["H1"] = "tCO2"
+        sheet["A1"] = "old"
+        sheet["B1"] = "tCO2"
         for i in 0:I-1
             if !co2Based[i+1]
                 continue
             end
-            sheet["G$(row)"] = "w_$(i)"
-            sheet["H$(row)"] = sum(value(wE[t, i, j]) for t in 0:T-1 
+            sheet["A$(row)"] = "w_$(i)"
+            sheet["B$(row)"] = sum(value(wE[t, i, j]) for t in 0:T-1 
                                    for j in 0:N[i]-1)
             row += 1
         end
-        sheet["G$(row)"] = "sum"
-        sheet["H$(row)"] = sum(value.(wE))
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = sum(value.(wE))
+
+        XLSX.addsheet!(xf)
+        shn += 1
+        sheet = xf[shn]
+        XLSX.rename!(sheet, "retro_co2")
+
         row = 2
-        sheet["I1"] = "retrofit"
-        sheet["J1"] = "tCO2"
+        sheet["A1"] = "retrofit"
+        sheet["B1"] = "tCO2"
         for i in 0:I-1
             if !co2Based[i+1]
                 continue
             end
             for k in 0:Kz[i]-1
-                sheet["I$(row)"] = "z_$(i)_$(k)"
-                sheet["J$(row)"] = no_z ? 0e0 : sum(value(zE[t, i, k, j]) 
+                sheet["A$(row)"] = "z_$(i)_$(k)"
+                sheet["B$(row)"] = no_z ? 0e0 : sum(value(zE[t, i, k, j]) 
                                                     for t in 0:T-1 
                                                     for j in 0:N[i]-1)
                 row += 1
             end
-            sheet["I$(row)"] = "sum"
-            sheet["J$(row)"] = no_z ? 0e0 : sum(value.(zE))
         end
+
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_z ? 0e0 : sum(value.(zE))
+
+        XLSX.addsheet!(xf)
+        shn += 1
+        sheet = xf[shn]
+        XLSX.rename!(sheet, "new_co2")
+
         row = 2
-        sheet["K1"] = "new"
-        sheet["L1"] = "tCO2"
+        sheet["A1"] = "new"
+        sheet["B1"] = "tCO2"
         for i in 0:I-1
             if !co2Based[i+1]
                 continue
             end
             for k in 0:Kx[i]-1
-                sheet["K$(row)"] = "x_$(i)_$(k)"
-                sheet["L$(row)"] = no_x ? 0e0 : sum(value(xE[t, i, k, j]) 
+                sheet["A$(row)"] = "x_$(i)_$(k)"
+                sheet["B$(row)"] = no_x ? 0e0 : sum(value(xE[t, i, k, j]) 
                                                     for t in 0:T-1 
                                                     for j in 0:T-1)
                 row += 1
             end
-            sheet["K$(row)"] = "sum"
-            sheet["L$(row)"] = no_x ? 0e0 : sum(value.(xE))
         end
         ####
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_x ? 0e0 : sum(value.(xE))
         XLSX.addsheet!(xf)
         ###
         shn+=1
         sheet = xf[shn]
         row = 2
-        XLSX.rename!(sheet, "Lat")
+        XLSX.rename!(sheet, "latency")
         sheet["A1"] = "kind"
         sheet["A2"] = "existing"
         sheet["A3"] = "retrofit"
@@ -1079,7 +1204,7 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
         shn+=1
         sheet = xf[shn]
         row = 2
-        XLSX.rename!(sheet, "termCz")
+        XLSX.rename!(sheet, "retro_terminalC")
         sheet["A1"] = "tech"
         sheet["B1"] = "M\$"
         for i in 0:I-1
@@ -1089,16 +1214,16 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
                                                     for j in 0:N[i]-1)
                 row += 1
             end
-            sheet["A$(row)"] = "sum"
-            sheet["B$(row)"] = no_z ? 0e0 : sum(value.(termCz))
         end
 
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_z ? 0e0 : sum(value.(termCz))
         XLSX.addsheet!(xf)
         ###
         shn+=1
         sheet = xf[shn]
         row = 2
-        XLSX.rename!(sheet, "termCx")
+        XLSX.rename!(sheet, "new_terminalC")
         sheet["A1"] = "tech"
         sheet["B1"] = "M\$"
         for i in 0:I-1
@@ -1108,10 +1233,9 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
                                                     for j in 0:T-1)
                 row += 1
             end
-            sheet["A$(row)"] = "sum"
-            sheet["B$(row)"] = no_x ? 0e0 : sum(value.(termCx))
         end
-
+        sheet["A$(row)"] = "sum"
+        sheet["B$(row)"] = no_x ? 0e0 : sum(value.(termCx))
     end
 
     XLSX.openxlsx(fname*"_gen.xlsx", mode="w") do xf
