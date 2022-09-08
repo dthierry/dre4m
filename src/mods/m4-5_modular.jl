@@ -32,6 +32,8 @@ function genModel(mS::modSets,
         for k in keys(Kz)
             Kz[k] = 0
         end
+        #: Hacky way of zeroe-ing-out the kinds file
+        mD.ia.kinds_z = zeros(Int, length(mD.ia.kinds_z))
     end
 
     Kx = mS.Kx
@@ -742,7 +744,7 @@ function genObj!(m::JuMP.Model, mS::modSets, mD::modData)
                            for j in 0:T-1 if (t-j)>=Nx[i,k] && !bLoadTech[i+1])
              )
 
-    lfact = 1e-2
+    lfact = 1e-6
   @objective(m, Min, (npv
                       + wLat*lfact
                       + xLat*lfact
