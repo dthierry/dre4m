@@ -59,5 +59,6 @@ struct modData
   ia::invrAttr
   rtf::absForm
   nwf::absForm
+  misc::miscParam
 end
 

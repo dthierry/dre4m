@@ -2,10 +2,41 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
+import os
 
-filecc="/Users/dthierry/Projects/raids/instance/instance_2_1v1/ccon5/files"
 
-filebau= "/Users/dthierry/Projects/raids/instance/instance_2_1v1/bau5/files"
+filecc0="/Users/dthierry/Projects/raids/instance/ins2_1v4/c5e-01"
+filebau0="/Users/dthierry/Projects/raids/instance/ins2_1v4/b5-01"
+
+def get_folders(directory):
+    print(directory)
+    fulladdress = []
+    d = []
+    dirs = os.listdir(directory)
+    print(dirs)
+    for i in dirs:
+        k = os.path.join(directory, i)
+        if os.path.isdir(k):
+            fulladdress.append(k)
+            d.append(i)
+            print(k)
+    actDict = {}
+    idx = 0
+    for i in d:
+        s = i.split("_")[4:]
+        key = ""
+        for j in s:
+            key += j + "_"
+        key = key[:-1]
+        actDict[key] = fulladdress[idx]
+        idx += 1
+    suffix = "_stats.xlsx"
+    for k in actDict.keys():
+        fn = actDict[k].split("/")[-1] + suffix
+        actDict[k] = os.path.join(actDict[k], fn)
+        print(k, fn)
+    return actDict
+
 
 def get_files(file):
     suffix = "_stats.xlsx"
@@ -20,8 +51,10 @@ def get_files(file):
     return fileDict
 
 def coalesce():
-    filescco = get_files(filecc)
-    filesbau = get_files(filebau)
+    filescco = get_folders(filecc0)
+    filesbau = get_folders(filebau0)
+    print(filescco)
+    print(filesbau)
     lef0 = [filescco["NoRF_NoCLT"], # ef_nrf_nclt
             filescco["NoRF_CLT"], # ef_nrf_clt,
             filescco["RF_NoCLT"], # ef_rf_nclt,

@@ -56,8 +56,8 @@ function devFixCost(mD::modData,
     else
         f = mD.nwf
     end
-    m = f.mCc[(baseKind, kind)]
-    b = f.bCc[(baseKind, kind)]
+    m = f.mFc[(baseKind, kind)]
+    b = f.bFc[(baseKind, kind)]
     (multiplier, baseFuel) = (1.e0, baseKind)
     if m >= 0
         multiplier = m
@@ -88,8 +88,8 @@ function devVarCost(mD::modData,
     else
         f = mD.nwf
     end
-    m = f.mCc[(baseKind, kind)]
-    b = f.bCc[(baseKind, kind)]
+    m = f.mVc[(baseKind, kind)]
+    b = f.bVc[(baseKind, kind)]
     (multiplier, baseFuel) = (1.e0, baseKind)
     if m >= 0
         multiplier = m
@@ -123,7 +123,8 @@ end
     retCost(mD::modData, kind::Int64, time::Int64, age::Int64)
 Cost of retirement.
 """
-function retCost(mD::modData, kind::Int64, time::Int64, age::Int64) 
+function retCost(mD::modData, kind::Int64, time::Int64, age0::Int64;
+        tag::String="") 
   #: M$/GW
   cA = mD.ca
   iA = mD.ia
@@ -131,28 +132,45 @@ function retCost(mD::modData, kind::Int64, time::Int64, age::Int64)
 
   #: old & retrof will have base age of (earliest), 
   # otw the year of creation for new cap
-  baseAge = max(time - age, 0)
+  #: for old + retro set age0 to 0
+  baseAge = 0
+  currentAge = time + age0
+  if tag == "X"
+      baseAge = age0
+      currentAge = time - age0
+      if currentAge < 0
+          throw(DomainError(time-age0, "argument must be nonnegative"))
+      end
+  end
   #: Loan liability
-  loanFrac = max(iA.loanP - age, 0)/iA.loanP
+  loanFrac = max(iA.loanP - currentAge, 0)/iA.loanP
   #: just in case we go above
   maxYr = size(cA.capC)[2]
-  if baseAge > maxYr
-      baseAge = maxYr
+  if baseAge > maxYr-1
+      baseAge = maxYr-1
   end
   loanLiability = loanFrac*cA.capC[kind+1, baseAge+1] * discount
   #: Decomission
   decom = cA.decomC[kind+1] * discount
-  return loanLiability + decom # lostRev*365*24
+  return loanLiability # + decom # lostRev*365*24
 end
 
 #
-function saleLost(mD::modData, kind::Int64, time::Int64, age::Int64) 
+function saleLost(mD::modData, kind::Int64, time::Int64, age0::Int64;
+        tag::String="") 
   #: M$/GWh
   cA = mD.ca
   iA = mD.ia
-  discount = 1/((1.e0 +iA.discountR)^time)
-  effSrvLf = max(iA.servLife[kind+1] - age, 0)
-  #: we need the corresponding capacity factor afterwrds
+  discount = 1/((1.e0+iA.discountR)^time)
+  currentAge = time + age0
+  if tag == "X"
+      currentAge = time - age0
+      if currentAge < 0
+          throw(DomainError(time-age0, "argument must be nonnegative"))
+      end
+  end
+
+  effSrvLf = max(iA.servLife[kind+1] - currentAge, 0)
   lostRev = effSrvLf*cA.elecSaleC[time+1] * discount
   return lostRev
 end
@@ -194,7 +212,11 @@ function zHeatRate(mD::modData,
     if b >= 0
         baseFuel = b
     end
-    heatrate = (tA.heatRw[baseFuel+1, age0+1]*(1.e0 +iA.heatIncR)^time)
+    maxYr = size(tA.heatRx)[2]
+    if age0 > maxYr-1
+        age0 = maxYr-1
+    end
+    heatrate = (tA.heatRx[baseFuel+1, age0+1]*(1.e0 +iA.heatIncR)^time)
     return heatrate * multiplier
 end
 ##
@@ -215,8 +237,8 @@ function xHeatRate(mD::modData, baseKind::Int64, kind::Int64,
         baseFuel = b
     end
     maxYr = size(tA.heatRx)[2]
-    if age0 > maxYr
-        age0 = maxYr
+    if age0 > maxYr-1
+        age0 = maxYr-1
     end
     heatIncr = (1.e0+iA.heatIncR)^time
     return multiplier*tA.heatRx[baseFuel+1, age0+1]*heatIncr
@@ -225,7 +247,6 @@ end
 #: (retrofit)
 #: Carbon instance
 function wCarbonInt(mD::modData, baseKind::Int64)
-    tA = mD.ta
     iA = mD.ia
     (multiplier, baseFuel) = (1.e0, baseKind)
     #:
@@ -237,7 +258,6 @@ end
 function devCarbonInt(mD::modData, 
         baseKind::Int64, 
         kind::Int64; form::String="X")
-    tA = mD.ta
     iA = mD.ia
     if form != "X"
         f = mD.rtf
@@ -260,7 +280,6 @@ end
 #: fuel costs only include those techs that are based in fuel burning
 function wFuelCost(mD::modData, baseKind::Int64, 
         time::Int64)
-    tA = mD.ta
     cA = mD.ca
     iA = mD.ia
     discount = 1/((1.e0+iA.discountR)^time)

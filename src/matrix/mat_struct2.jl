@@ -254,6 +254,15 @@ struct absForm
 end
 
 
-
+struct miscParam
+    genScale::Float64
+    function miscParam(inputFile::String)
+        XLSX.openxlsx(inputFile, mode="r") do xf
+            sheet = xf["reference"]
+            gS = sheet["B31"]
+            new(gS)
+        end
+    end
+end
 ##
 

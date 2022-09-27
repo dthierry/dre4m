@@ -61,10 +61,11 @@ function genModel(mS::modSets,
     initCap = mD.ta.initCap
     d = mD.ta.nachF
     maxDelay = maximum(values(xDelay))
-    cFactW = mD.ta.cFac
-    size_cf = size(cFactW)
-    cFactZ = zeros((size_cf[1], size_cf[2], 1))
-    cFactX = zeros((size_cf[1], size_cf[2], 1))
+    
+    genScale = mD.misc.genScale
+
+    cFact = mD.ta.cFac
+    cFact0 = [mD.ta.cFac[i+1, 1] for i in 0:I-1]
 
     jrnl = j_log_f
     pr.caller = @__FILE__
@@ -317,6 +318,7 @@ function genModel(mS::modSets,
                )
 
   #: Effective capacity retrofit
+  #: All effective rf capacity from time=0 to delay is set to 0
   @constraint(m,
               Z_E0[t=0:T-1,
                    i=0:I-1, k=0:Kz[i]-1,
@@ -326,8 +328,8 @@ function genModel(mS::modSets,
 
   @constraint(m,
               Z_E[t=0:T-1,
-                      i=0:I-1, k=0:Kz[i]-1,
-                      j=0:N[i]-1; t >= zDelay[i,k]],
+                  i=0:I-1, k=0:Kz[i]-1, i
+                  j=0:N[i]-1; t >= zDelay[i,k]],
               Z[t, i, k, j] ==
               z[t, i, k, j] - uz[t, i, k, j]
               + zTrans[t-zDelay[i, k], i, k, j]
@@ -352,21 +354,22 @@ function genModel(mS::modSets,
   #: these are the hard questions
   @constraint(m, WgEq[t=0:T-1, i=0:I-1, j=0:N[i]-1],
               Wgen[t, i, j] ==
-              yrHr * cFactW[i+1, 1] * W[t, i, j]
+              # GWh * (1TWh/1000GWh) = TWh
+              genScale * yrHr * cFact0[i+1] * W[t, i, j]
               )
 
   @constraint(m, ZgEq[t=0:T-1, i=0:I-1, k=0:Kz[i]-1,
                       j=0:N[i]-1],
               Zgen[t, i, k, j] ==
-              yrHr * cFactW[i+1, 1] * Z[t, i, k, j]
+              genScale * yrHr * cFact0[i+1] * Z[t, i, k, j]
               )
 
   @constraint(m, XgEq[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, j=0:T-1],
               Xgen[t, i, k, j] ==
-              yrHr * cFactW[i+1, j+1] * X[t, i, k, j]
+              genScale * yrHr * cFact[i+1, j+1] * X[t, i, k, j]
               )
 
-  #: Generation (GWh)
+  #: Generation (see genScale for units)
   @constraint(m, sGenEq[t = 1:T-1, i = 0:I-1],
             (
             sum(Wgen[t, i, j] for j in 0:N[i]-1) +
@@ -392,6 +395,20 @@ function genModel(mS::modSets,
               Wgen[t, i, j] * wHeatRate(mD, i, j, t)
              )
 
+    XLSX.openxlsx(pr.fname*"_w_heat.xlsx", mode="w") do xf
+        sh = 0
+        for i in 0:I-1
+            XLSX.addsheet!(xf)
+            sh += 1
+            sheet = xf[sh]
+            XLSX.rename!(sheet, "w"*string(i))
+            for t in 0:T-1
+                ts = string(t+1)
+                v = [wHeatRate(mD, i, j, t) for j in 0:N[i]-1]
+                sheet["A"*ts] = v
+            end
+        end
+    end
 
   # the actual age is j+t
   @constraint(m,
@@ -401,6 +418,22 @@ function genModel(mS::modSets,
               Zgen[t, i, k, j] * zHeatRate(mD, i, k, j, t)
              )
 
+    XLSX.openxlsx(pr.fname*"_z_heat.xlsx", mode="w") do xf
+        sh = 0
+        for i in 0:I-1
+            for k in 0:Kz[i]-1
+                XLSX.addsheet!(xf)
+                sh += 1
+                sheet = xf[sh]
+                XLSX.rename!(sheet, "z"*string(i)*string(k))
+                for t in 0:T-1
+                    ts = string(t+1)
+                    v = [zHeatRate(mD,i,k,j,t) for j in 0:N[i]-1]
+                    sheet["A"*ts] = v
+                end
+            end
+        end
+    end
   # the actual age is t-j
   @constraint(m,
               heat_x_E[t=0:T-1, i=0:I-1, k=0:Kx[i]-1,
@@ -409,11 +442,41 @@ function genModel(mS::modSets,
               Xgen[t, i, k, j] * xHeatRate(mD, i, k, j, t)
              )
 
+    XLSX.openxlsx(pr.fname*"_x_heat.xlsx", mode="w") do xf
+        sh = 0
+        for i in 0:I-1
+            for k in 0:Kx[i]-1
+                XLSX.addsheet!(xf)
+                sh += 1
+                sheet = xf[sh]
+                XLSX.rename!(sheet, "x"*string(i)*string(k))
+                for t in 0:T-1
+                    ts = string(t+1)
+                    v = [xHeatRate(mD,i,k,j,t) for j in 0:T-1]
+                    sheet["A"*ts] = v
+                end
+            end
+        end
+    end
+
   @constraint(m,
               e_wCon[t=0:T-1, i=0:I-1,
                      j=0:N[i]-1; co2Based[i+1]],
               wE[t, i, j] == heat_w[t, i, j] * wCarbonInt(mD, i)
              )
+
+  XLSX.openxlsx(pr.fname*"_w_carb.xlsx", mode="w") do xf
+      sh = 0
+      XLSX.addsheet!(xf)
+      sh += 1
+      sheet = xf[sh]
+      XLSX.rename!(sheet, "w")
+      for i in 0:I-1
+          v = wCarbonInt(mD, i)
+          ir = string(i+1)
+          sheet["A"*ir] = v
+      end
+  end
 
   @constraint(m,
               e_zCon[t = 0:T-1, i = 0:I-1, k =0:Kz[i]-1,
@@ -422,6 +485,19 @@ function genModel(mS::modSets,
               heat_z[t, i, k, j] * devCarbonInt(mD, i, k, form="R")
              )
 
+  XLSX.openxlsx(pr.fname*"_z_carb.xlsx", mode="w") do xf
+      sh = 0
+      XLSX.addsheet!(xf)
+      sh += 1
+      sheet = xf[sh]
+      XLSX.rename!(sheet, "z")
+      for i in 0:I-1
+          ir = string(i+1)
+          v = [devCarbonInt(mD, i, k, form="R") for k in 0:Kz[i]-1]
+          sheet["A"*ir] = v
+      end
+  end
+
   @constraint(m,
               e_xCon[t=0:T-1, i=0:I-1, k=0:Kx[i]-1,
                      j=0:T-1; co2Based[i+1]],
@@ -429,8 +505,22 @@ function genModel(mS::modSets,
               heat_x[t, i, k, j] * devCarbonInt(mD, i, k, form="X")
              )
 
+  XLSX.openxlsx(pr.fname*"_x_carb.xlsx", mode="w") do xf
+      sh = 0
+      XLSX.addsheet!(xf)
+      sh += 1
+      sheet = xf[sh]
+      XLSX.rename!(sheet, "x")
+      for i in 0:I-1
+          ir = string(i+1)
+          v = [devCarbonInt(mD, i, k, form="X") for k in 0:Kx[i]-1]
+          sheet["A"*ir] = v
+      end
+  end
+
   @constraint(m, xOcapE[t=0:T-1, i=0:I-1, k=0:Kx[i]-1],
-              xOcap[t, i, k] == devCapCost(mD, i, k, t)*xAlloc[t, i, k]
+              xOcap[t, i, k] == 
+              devCapCost(mD, i, k, t, form="X")*xAlloc[t, i, k]
              )
 
   @constraint(m, zOcapE[t=0:T-1, i=0:I-1, k=0:Kz[i]-1],
@@ -488,6 +578,22 @@ function genModel(mS::modSets,
                                 for j in 0:N[i]-1)
              )
 
+  XLSX.openxlsx(pr.fname*"_w_fuel.xlsx", mode="w") do xf
+      sh = 0
+      for i in 0:I-1
+          XLSX.addsheet!(xf)
+          sh += 1
+          sheet = xf[sh]
+          XLSX.rename!(sheet, "w"*string(i))
+          for t in 0:T-1
+              ts = string(t+1)
+              v = wFuelCost(mD, i, t)
+              sheet["A"*ts] = v
+          end
+      end
+  end
+
+
   @constraint(m, zFuelC_E[t=0:T-1, i=0:I-1, k=0:Kz[i]-1;
                           fuelBased[i+1]],
               zFuelC[t, i, k] ==
@@ -495,12 +601,45 @@ function genModel(mS::modSets,
                   for j in 0:N[i]-1)
              )
 
+    XLSX.openxlsx(pr.fname*"_z_fuel.xlsx", mode="w") do xf
+        sh = 0
+        for i in 0:I-1
+            for k in 0:Kz[i]-1
+                XLSX.addsheet!(xf)
+                sh += 1
+                sheet = xf[sh]
+                XLSX.rename!(sheet, "z"*string(i)*string(k))
+                for t in 0:T-1
+                    ts = string(t+1)
+                    v = devFuelCost(mD,i,k,t,form="R")
+                    sheet["A"*ts] = v
+                end
+            end
+        end
+    end
   @constraint(m, xFuelC_E[t=0:T-1, i=0:I-1, k=0:Kx[i]-1;
                           fuelBased[i+1]],
               xFuelC[t, i, k] ==
               sum(devFuelCost(mD, i, k, t, form="X") * heat_x[t, i, k, j]
                   for j in 0:T-1)
              )
+
+    XLSX.openxlsx(pr.fname*"_x_fuel.xlsx", mode="w") do xf
+        sh = 0
+        for i in 0:I-1
+            for k in 0:Kx[i]-1
+                XLSX.addsheet!(xf)
+                sh += 1
+                sheet = xf[sh]
+                XLSX.rename!(sheet, "x"*string(i)*string(k))
+                for t in 0:T-1
+                    ts = string(t+1)
+                    v = devFuelCost(mD,i,k,t,form="X")
+                    sheet["A"*ts] = v
+                end
+            end
+        end
+    end
 
   @constraint(m, co2OverallYrE[t=0:T-1],
               co2OverallYr[t] ==
@@ -509,8 +648,7 @@ function genModel(mS::modSets,
               + sum(zE[t, i, k, j]
                     for i in 0:I-1
                     for k in 0:Kz[i]-1
-                    for j in 0:N[i]-1
-                    if co2Based[i+1])
+                    for j in 0:N[i]-1 if co2Based[i+1])
               + sum(xE[t, i, k, j]
                     for i in 0:I-1
                     for k in 0:Kx[i]-1
@@ -524,15 +662,36 @@ function genModel(mS::modSets,
   @constraint(m, wRet_E[i=0:I-1, j=0:N[i]-1],
               wRet[i, j] ==
               sum(
-              (retCost(mD, i, t, j+t) + 365*24*saleLost(mD, i, t, j+t))
+              (retCost(mD, i, t, 0) 
+               # M$/TWh * (1TWh/1000GWh) = M$/GWh
+               + genScale*yrHr*cFact0[i+1]*saleLost(mD, i, t, j)
+              )
               * uw[t, i, j] for t in 0:T-1)
              )
+    XLSX.openxlsx(pr.fname*"retcw.xlsx", mode="w") do xf
+        sh = 0
+        for i in 0:I-1
+            XLSX.addsheet!(xf)
+            sh += 1
+            sheet = xf[sh]
+            XLSX.rename!(sheet, "w"*string(i))
+            for t in 0:T-1
+                ts = string(t+1)
+                v = [retCost(mD, i, t, 0)+
+                     genScale*yrHr*cFact0[i+1]*saleLost(mD, i, t, j) 
+                     for j in 0:N[i]-1]
+                sheet["A"*ts] = v
+            end
+        end
+    end
+
 
   @constraint(m, zRet_E[i=0:I-1, k=0:Kz[i]-1,
                         j=0:N[i]-1],
               zRet[i, k, j]
               == sum(
-              (retCost(mD, i, t, j+t) + 365*24*saleLost(mD, i, t, j+t))
+              (retCost(mD, i, t, 0) 
+               + genScale*yrHr*cFact0[i+1]*saleLost(mD, i, t, j))
               * uz[t, i, k, j] for t in 0:T-1 if t >= zDelay[i,k])
               )
 
@@ -541,9 +700,27 @@ function genModel(mS::modSets,
                         j=0:T-1],
               xRet[i, k, j] ==
               sum(
-              (retCost(mD, i, t, t-j) + 365*24*saleLost(mD, i, t, t-j))
+              (retCost(mD, i, t, j, tag="X") 
+               + genScale*yrHr*cFact[i+1, j+1]*saleLost(mD, i, t, j, tag="X"))
               * ux[t, i, k, j] for t in 0:T-1 if t >= (j+xDelay[i, k]))
              )
+
+  XLSX.openxlsx(pr.fname*"retcx.xlsx", mode="w") do xf
+      sh = 0
+      for i in 0:I-1
+          XLSX.addsheet!(xf)
+          sh += 1
+          sheet = xf[sh]
+          XLSX.rename!(sheet, "x"*string(i))
+          for t in 0:T-1
+              ts = string(t+1)
+              v = [retCost(mD,i,t,j,tag="X")+
+                   genScale*yrHr*cFact[i+1,j+1]*saleLost(mD,i,t,j,tag="X") for j in 0:T-1 if t>=j]
+              sheet["A"*ts] = v
+          end
+      end
+  end
+
 
   @constraint(m, npv_e,
               npv ==
@@ -604,28 +781,25 @@ function genModel(mS::modSets,
 
   @constraint(m, termCwE[i=0:I-1, j=0:N[i]-1],
               termCw[i, j] ==
-              (retCost(mD, i, T-1, min(j+T-1, N[i]-1)) +
-               365*24*saleLost(mD, i, T-1, min(j+T-1, N[i]-1))
-              )
-              * W[T-1, i, j]
+              (retCost(mD, i, T-1, 0) +
+               genScale*365*24*saleLost(mD, i, T-1, min(j, N[i]-1))
+              ) * W[T-1, i, j]
              )
 
   @constraint(m, termCxE[i=0:I-1, k=0:Kx[i]-1,
                          j=0:T-1],
               termCx[i, k, j] ==
-              (retCost(mD, i, T-1, T-1-j) +
-               365*24*saleLost(mD, i, T-1, T-1-j)
-              ) *
-              X[T-1, i, k, j]
+              (retCost(mD, i, T-1, j, tag="X") +
+               genScale*365*24*saleLost(mD, i, T-1, j, tag="X")
+              )*X[T-1, i, k, j]
              )
 
   @constraint(m, termCzE[i=0:I-1, k=0:Kz[i]-1,
                          j=0:N[i]-1],
               termCz[i, k, j] ==
-              (
-                retCost(mD, i, T-1, min(j+T-1, N[i]-1)) +
-                365*24*saleLost(mD, i, T-1, min(j+T-1, N[i]-1))
-              ) * Z[T-1, i, k, j]
+              (retCost(mD, i, T-1, 0) +
+               genScale*365*24*saleLost(mD, i, T-1, min(j, N[i]-1))
+              )*Z[T-1, i, k, j]
              )
     #: not accountable for investment decisions made before the
     # time horizon
@@ -645,12 +819,13 @@ function genModel(mS::modSets,
                     for j in 0:N[i]-1)
              )
 
-  function rLatentW(time, kind, age)
+  function rLatentW(time, kind, age0)
       sL = servLife
-      return retCost(mD, kind, 1, -1)* exp((age-sL[kind+1])/sL[kind+1])
+      age = age0 + time
+      return retCost(mD, 0, 1, 0)*
+      exp((age-sL[kind+1])/sL[kind+1])
       # retirementCost_age_1 * exp((age-servLife)/servLife)
   end
-
   @variable(m, wLatRet[t=0:T-1, i=0:I-1,
                        j=0:N[i]-1;
                        (t+j) >= servLife[i+1] && !bLoadTech[i+1]])
@@ -658,37 +833,40 @@ function genModel(mS::modSets,
   @constraint(m, wOldRetE[t=0:T-1, i=0:I-1,
                           j=0:N[i]-1;
                           (t+j)>=servLife[i+1] && !bLoadTech[i+1]],
-              wLatRet[t,i,j] == w[t, i, j] * rLatentW(t, i, (t+j))
+              wLatRet[t,i,j] == w[t, i, j] * rLatentW(t, i, j)
               #wLatRet[t,i,j] == w[t, i, j] * retCostW(mD, i, t,
               #                  min(1, max(31,N[i]-1 - t - j))))
              )
   #
-  function rLatentZ(time, baseKind, kind, age)
+  function rLatentZ(time, baseKind, kind, age0)
       si = mD.rtf.servLinc
       #sL = (i, k) -> floor(Int, servLife[i+1]*(1+si[i, k]))
+      age = age0 + time
       #return retCost(mD, kind, 1, -1)*
       #exp((age-sL(baseKind, kind))/sL(baseKind, kind))
       sL = servLife # same as w
-      return retCost(mD, kind, 1, -1)* exp((age-sL[kind+1])/sL[kind+1])
+      return retCost(mD, 0, 1, 0)*
+      exp((age-sL[kind+1])/sL[kind+1])
   end
 
   @variable(m, zLatRet[t=0:T-1, i=0:I-1, k=0:Kz[i]-1,
                        j=0:N[i]-1;
-                       (t+j) >= Nz[i,k] && t >= zDelay[i,k] && !bLoadTech[i+1]]
+                       (t+j) >= servLife[i+1] && t >= zDelay[i,k] && !bLoadTech[i+1]]
            )
 
   @constraint(m, zOldRetE[t=0:T-1, i=0:I-1, k=0:Kz[i]-1,
                           j=0:N[i]-1;
-                          (t+j)>=Nz[i,k] && t>=zDelay[i,k] && !bLoadTech[i+1]],
-              zLatRet[t, i, k, j] == z[t, i, k, j] * rLatentZ(t, i, k, (t+j))
+                          (t+j)>=servLife[i+1] && t>=zDelay[i,k] && !bLoadTech[i+1]],
+              zLatRet[t, i, k, j] == z[t, i, k, j] * rLatentZ(t, i, k, j)
              # zLatRet[t, i, k, j] == z[t, i, k, j]*retCostW(mD, i, t,
              #                        min(1, max(31,Nz[i,k]-1 - t - j)))
              )
   #
-  function rLatentX(time, baseKind, kind, age)
+  function rLatentX(time, baseKind, kind, age0)
       si = mD.nwf.servLinc
+      age = time - age0
       sL = (i, k) -> floor(Int, servLife[i+1]*(1+si[i, k]))
-      return retCost(mD, kind, 1, -1)*
+      return retCost(mD, 0, 1, 0)*
       exp((age-sL(baseKind, kind))/sL(baseKind, kind))
   end
 
@@ -700,7 +878,7 @@ function genModel(mS::modSets,
   @constraint(m, xOldRetE[t=0:T-1, i=0:I-1, k=0:Kx[i]-1,
                           j=0:N[i]-1;
                           (t-j) >= Nx[i, k] && !bLoadTech[i+1]],
-              xLatRet[t, i, k, j] == x[t, i, k, j] * rLatentX(t, i, k, (t-j))
+              xLatRet[t, i, k, j] == x[t, i, k, j] * rLatentX(t, i, k, j)
               #xLatRet[t, i, k, j] == x[t, i, k, j]*retCostW(mD, i, t,
               #                      min(1, max(31,Nx[i,k]-1 - t + j)))
              )
@@ -713,7 +891,8 @@ end
     genObj()
 Generates the objective function.
 """
-function genObj!(m::JuMP.Model, mS::modSets, mD::modData)
+function genObj!(m::JuMP.Model, mS::modSets, mD::modData; 
+        latFact::Float64=1e-03)
   @info "Setting objective.."
   T = mS.T
   I = mS.I
@@ -732,23 +911,22 @@ function genObj!(m::JuMP.Model, mS::modSets, mD::modData)
   wLatRet = m[:wLatRet]
   xLatRet = m[:xLatRet]
   zLatRet = m[:zLatRet]
+  servLife = mD.ia.servLife
 
   @expression(m, wLat, sum(wLatRet))
   @expression(m, zLat, sum(zLatRet[t, i, k, j]
                            for t in 0:T-1 for i in 0:I-1 for k in 0:Kz[i]-1
                            for j in 0:N[i]-1 if
-                           (t+j)>=Nz[i,k] && t>=zDelay[i,k] && !bLoadTech[i+1])
+                           (t+j)>=servLife[i+1] && t>=zDelay[i,k] && !bLoadTech[i+1])
              )
   @expression(m, xLat, sum(xLatRet[t, i, k, j]
                            for t in 0:T-1 for i in 0:I-1 for k in 0:Kx[i]-1
                            for j in 0:T-1 if (t-j)>=Nx[i,k] && !bLoadTech[i+1])
              )
-
-    lfact = 1e-6
   @objective(m, Min, (npv
-                      + wLat*lfact
-                      + xLat*lfact
-                      + zLat*lfact
+                      + wLat*latFact
+                      + xLat*latFact
+                      + zLat*latFact
                       + (1e-6)*termCost
                      )/1e3)
 end
@@ -810,19 +988,26 @@ function EmConBudget!(
     X = m[:X]
     T = mS.T
     #: magic numbers
+    scaleCo2 = 1e-6 # MtCo2
     co22010 = 2_258_639_000.00
     # 2.26E+06
     # co2_2010_2015 = 10_515_700_000.0
     # Greenhouse Gas Inventory Data Explorer
-    co2_2010_2019 = 19_315_983_000.0 # using the epa GHC
-    co22050 = co22010 * 0.29
+    co2_2010_2020 = 20_754_973_000.0
+    # 19_315_983_000.0 # using the epa GHC
+    co22050 = co22010 * 0.01
     #: Last term is a trapezoid minus the 2010-2015 gap
-    @info("The budget: $((co22010 + co22050) * 0.5 * 41 -
-                         co2_2010_2019)")
+    @info("The budget: $(scaleCo2*((co22010 + co22050) * 0.5 * 41 -
+                          co2_2010_2020))")
     co2OverallYr = m[:co2OverallYr]
+
+
     @constraint(m, co2Budget,
                 sum(co2OverallYr[t] for t in 0:T-1) <=
-                (co22010 + co22050) * 0.5 * 41 - co2_2010_2019
+                (
+                 (co22010 + co22050) * 0.5 * 41 
+                 - co2_2010_2020
+                ) * scaleCo2
                )
 end
 

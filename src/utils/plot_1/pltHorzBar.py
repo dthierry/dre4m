@@ -145,8 +145,8 @@ def plot_em_bars():
     a.set_xticks(x_pos, labels=o_co2.index, rotation=90)
     a.bar_label(b1, padding=2, fmt="%.1E", label_type="center")
     #a.bar_label(b2, padding=0, fmt="%.2E")
-    a.bar_label(b3, padding=10, fmt="%.1E")
-    a.set_ylabel("tCO2")
+    a.bar_label(b3, padding=10, fmt="%.2E")
+    a.set_ylabel("MtCO2")
     a.legend(loc=0)
     f.savefig("co2.png", bbox_inches="tight")
 
@@ -202,7 +202,7 @@ def plot_npv_bars():
     legend = a.legend(loc="lower left",
         bbox_to_anchor=(1.0, 0.0)
     )
-    a.bar_label(b, padding=10, fmt="%.1E")
+    a.bar_label(b, padding=10, fmt="%.2E")
     f.savefig("npv.png", bbox_inches="tight")
 
 if __name__ == "__main__":

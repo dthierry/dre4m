@@ -50,7 +50,7 @@ def stacksSingle(l: list, dmax: float) -> None:
         all_colours = [cmap(norm(int(cName[1]))) for cName in cNames]
         labels = [tName[int(cName[1])] + " " + suffix[name]
                 for cName in cNames]
-        f, a = plt.subplots(dpi=200)
+        f, a = plt.subplots(dpi=300)
         a.stackplot(df.index + 2015,
                 [df[col] for col in df.columns],
                 colors=all_colours,
@@ -107,7 +107,7 @@ def allStacked(l: dict, dmax: float) -> None:
     print(all_colours)
     print(all_hatches)
     # Create subplots
-    f, a = plt.subplots(dpi=200)
+    f, a = plt.subplots(dpi=300)
     sp = a.stackplot(
             l["w"].index + 2020,
             all_columns,
@@ -175,7 +175,7 @@ def allStacked(l: dict, dmax: float) -> None:
     export_legend(legend,
                   "legend_" + name + "_" + efn + "_" + ".png")
     ds = GetEmLine()
-    bget = 40413725355e0
+    bget = 38_974_735_355*1e-6
     legend.remove()
     f.canvas.draw()
     a2 = a.twinx()
@@ -211,7 +211,7 @@ def sBars(l: list) -> None:
                 for cName in cNames]
         hatches = [baseHatch*int(cName[2]) for cName in cNames]
 
-        f, a = plt.subplots(dpi=200)
+        f, a = plt.subplots(dpi=300)
 
         base = pd.Series([0 for j in df.index])
         k = 0
