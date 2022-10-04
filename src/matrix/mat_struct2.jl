@@ -46,6 +46,7 @@ mutable struct timeAttr
     #: heat rate(s)
     heatRw::Array{Float64, 2} #: BTu/kWh
     heatRx::Array{Float64, 2} #: BTu/kWh
+    heatRwAvg::Vector{Float64}
     function timeAttr(inputFile::String)
         XLSX.openxlsx(inputFile, mode="r") do xf
             # set sheet
@@ -61,11 +62,17 @@ mutable struct timeAttr
             cf = s[sR["B4"]] # cap fact
             ho = s[sR["B5"]].*hrf # vint hr
             hn = s[sR["B6"]].*hr2f # new hr
+            hoAvg = []
+            for i in 1:size(ho)[1]
+                v = filter(x->x>0, ho[i, :])
+                a = sum(v)/length(v)
+                push!(hoAvg, isnan(a) ? 0 : a)
+            end
             new(ic,
                 nh,
                 cf,
                 ho,
-                hn)
+                hn, hoAvg)
         end
     end
 end
@@ -180,6 +187,7 @@ struct absForm
     bHr
     bEm
     bFu
+    ubhr
     function absForm(inputFile::String, kRef::String, m9Ref::String)
         mCc = Dict((0,0)=>-9999e0)
         mFc = Dict((0,0)=>-9999e0)
@@ -197,7 +205,7 @@ struct absForm
         
         delay = Dict((0,0)=>0) #: leading time
         sLinc = Dict((0,0)=>0e0) 
-
+        ubhr = Dict((0,0)=>false)
         XLSX.openxlsx(inputFile, mode="r") do xf
             #: read the reference cells
             sR = xf["reference"] 
@@ -230,6 +238,8 @@ struct absForm
                     bEm[(i, k)] = floor(mat9999[j, 12])
                     mFu[(i, k)] = mat9999[j, 13]
                     bFu[(i, k)] = floor(mat9999[j, 14])
+                    ubhr[(i, k)] = 
+                    ismissing(mat9999[j, 15]) ? false : mat9999[j, 15]
                     k += 1
                 end
                 offset += kn + 1
@@ -249,7 +259,8 @@ struct absForm
             bVc, 
             bHr, 
             bEm, 
-            bFu)
+            bFu, 
+            ubhr)
     end
 end
 

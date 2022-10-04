@@ -15,18 +15,19 @@ retrofit "R"
 function devCapCost(mD::modData, 
         baseKind::Int64, 
         kind::Int64, 
-        time::Int64; form::String="X") #: M$/GW
+        time::Int64, 
+        form::String) #: M$/GW
     cA = mD.ca
     iA = mD.ia
     discount = 1/((1.e0 +iA.discountR)^time)
-    if form != "X"
+    if form == "R"
         f = mD.rtf #: retrofit
-    else
+    elseif form == "X"
         f = mD.nwf
     end
     m = f.mCc[(baseKind, kind)]
     b = f.bCc[(baseKind, kind)]
-    (multiplier, baseFuel) = (1.e0, baseKind)
+    (multiplier, baseFuel) = ("error", baseKind)
     if m >= 0
         multiplier = m
     end
@@ -47,18 +48,19 @@ retrofit "R"
 function devFixCost(mD::modData, 
         baseKind::Int64, 
         kind::Int64, 
-        time::Int64; form::String="X") #: M$/GW
+        time::Int64,
+        form::String) #: M$/GW
     cA = mD.ca
     iA = mD.ia
     discount = 1/((1.e0 +iA.discountR)^time)
-    if form != "X"
+    if form == "R"
         f = mD.rtf #: retrofit
-    else
+    elseif form == "X"
         f = mD.nwf
     end
     m = f.mFc[(baseKind, kind)]
     b = f.bFc[(baseKind, kind)]
-    (multiplier, baseFuel) = (1.e0, baseKind)
+    (multiplier, baseFuel) = ("error", baseKind)
     if m >= 0
         multiplier = m
     end
@@ -79,18 +81,19 @@ retrofit "R"
 function devVarCost(mD::modData, 
         baseKind::Int64, 
         kind::Int64, 
-        time::Int64; form::String="X") #: M$/GW
+        time::Int64, 
+        form::String) #: M$/GW
     cA = mD.ca
     iA = mD.ia
     discount = 1/((1.e0 +iA.discountR)^time)
-    if form != "X"
+    if form == "R"
         f = mD.rtf #: retrofit
-    else
+    elseif form == "X"
         f = mD.nwf
     end
     m = f.mVc[(baseKind, kind)]
     b = f.bVc[(baseKind, kind)]
-    (multiplier, baseFuel) = (1.e0, baseKind)
+    (multiplier, baseFuel) = ("error", baseKind)
     if m >= 0
         multiplier = m
     end
@@ -188,7 +191,9 @@ function wHeatRate(mD::modData,
     tA = mD.ta
     iA = mD.ia
     # baseAge = min(maxBase, baseAge)
-    return tA.heatRw[kind+1, age0+1]*(1.e0+iA.heatIncR)^time
+    #hRate0 = tA.heatRwAvg[kind+1] ## testing
+    hRate0 = tA.heatRw[kind+1, age0+1]
+    return hRate0*(1.e0+iA.heatIncR)^time
 end
 
 #: (retrofit)
@@ -205,7 +210,7 @@ function zHeatRate(mD::modData,
     #:
     m = rtf.mHr[(baseKind, kind)]
     b = rtf.bHr[(baseKind, kind)]
-    (multiplier, baseFuel) = (1.e0, baseKind)
+    (multiplier, baseFuel) = ("error", baseKind)
     if m >= 0
         multiplier = m
     end
@@ -213,13 +218,24 @@ function zHeatRate(mD::modData,
         baseFuel = b
     end
     maxYr = size(tA.heatRx)[2]
+    ageX = age0
     if age0 > maxYr-1
-        age0 = maxYr-1
+        ageX = maxYr-1
     end
-    heatrate = (tA.heatRx[baseFuel+1, age0+1]*(1.e0 +iA.heatIncR)^time)
-    return heatrate * multiplier
+
+    hr0 = tA.heatRx[baseFuel+1, ageX+1]
+    if rtf.ubhr[baseKind, kind] 
+        hr0 = tA.heatRw[baseFuel+1, age0+1]
+        hr0 = hr0 <= 1e-06 ? tA.heatRwAvg[baseFuel+1] : hr0
+    end
+    #if baseFuel != baseKind
+    #    hrm = tA.heatRwAvg[baseFuel+1] 
+    #    hr0 = hr0 == 0.0 ? hrm : hr0
+    #end
+    heatIncr = (1.e0+iA.heatIncR)^time
+    return multiplier*hr0*heatIncr
 end
-##
+
 
 function xHeatRate(mD::modData, baseKind::Int64, kind::Int64, 
         age0::Int64, time::Int64)
@@ -229,7 +245,7 @@ function xHeatRate(mD::modData, baseKind::Int64, kind::Int64,
 
     m = nwf.mHr[(baseKind, kind)]
     b = nwf.bHr[(baseKind, kind)]
-    (multiplier, baseFuel) = (1.e0, baseKind)
+    (multiplier, baseFuel) = ("error", baseKind)
     if m >= 0
         multiplier = m
     end
@@ -248,26 +264,27 @@ end
 #: Carbon instance
 function wCarbonInt(mD::modData, baseKind::Int64)
     iA = mD.ia
-    (multiplier, baseFuel) = (1.e0, baseKind)
     #:
-    return iA.carbInt[baseFuel+1] * multiplier
+    baseFuel = baseKind
+    return iA.carbInt[baseFuel+1]
 end
 
 #: (retrofit)
 #: Carbon instance
 function devCarbonInt(mD::modData, 
         baseKind::Int64, 
-        kind::Int64; form::String="X")
+        kind::Int64, 
+        form::String)
     iA = mD.ia
-    if form != "X"
+    if form == "R"
         f = mD.rtf
-    else
+    elseif form == "X"
         f = mD.nwf
     end
     #:
     m = f.mEm[(baseKind, kind)]
     b = f.bEm[(baseKind, kind)]
-    (multiplier, baseFuel) = (1.e0, baseKind)
+    (multiplier, baseFuel) = ("error", baseKind)
     if m >= 0
         multiplier = m
     end
@@ -283,7 +300,7 @@ function wFuelCost(mD::modData, baseKind::Int64,
     cA = mD.ca
     iA = mD.ia
     discount = 1/((1.e0+iA.discountR)^time)
-    (multiplier, baseFuel) = (1.e0, baseKind)
+    baseFuel = baseKind
     return cA.fuelC[baseFuel+1, time+1]*discount 
 end
 
@@ -291,20 +308,20 @@ end
 function devFuelCost(mD::modData, 
                    baseKind::Int64, 
                    kind::Int64,
-                   time::Int64; form::String="X")
+                   time::Int64, form::String)
     tA = mD.ta
     cA = mD.ca
     iA = mD.ia
-    if form != "X"
+    if form == "R"
         f = mD.rtf
-    else
+    elseif form == "X"
         f = mD.nwf
     end
     discount = 1/((1.e0 +iA.discountR)^time)
     #: evaluate retrofit
     m = f.mFu[(baseKind, kind)]
     b = f.bFu[(baseKind, kind)]
-    (multiplier, baseFuel) = (1.e0, baseKind)
+    (multiplier, baseFuel) = ("error", baseKind)
     if m >= 0
         multiplier = m
     end

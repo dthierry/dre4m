@@ -328,7 +328,7 @@ function genModel(mS::modSets,
 
   @constraint(m,
               Z_E[t=0:T-1,
-                  i=0:I-1, k=0:Kz[i]-1, i
+                  i=0:I-1, k=0:Kz[i]-1,
                   j=0:N[i]-1; t >= zDelay[i,k]],
               Z[t, i, k, j] ==
               z[t, i, k, j] - uz[t, i, k, j]
@@ -409,7 +409,7 @@ function genModel(mS::modSets,
             end
         end
     end
-
+    #adhoc
   # the actual age is j+t
   @constraint(m,
               heat_z_E[t = 0:T-1, i = 0:I-1, k = 0:Kz[i]-1,
@@ -482,7 +482,7 @@ function genModel(mS::modSets,
               e_zCon[t = 0:T-1, i = 0:I-1, k =0:Kz[i]-1,
                      j=0:N[i]-1; co2Based[i+1]],
               zE[t, i, k, j] ==
-              heat_z[t, i, k, j] * devCarbonInt(mD, i, k, form="R")
+              heat_z[t, i, k, j] * devCarbonInt(mD, i, k, "R")
              )
 
   XLSX.openxlsx(pr.fname*"_z_carb.xlsx", mode="w") do xf
@@ -493,7 +493,7 @@ function genModel(mS::modSets,
       XLSX.rename!(sheet, "z")
       for i in 0:I-1
           ir = string(i+1)
-          v = [devCarbonInt(mD, i, k, form="R") for k in 0:Kz[i]-1]
+          v = [devCarbonInt(mD, i, k, "R") for k in 0:Kz[i]-1]
           sheet["A"*ir] = v
       end
   end
@@ -502,7 +502,7 @@ function genModel(mS::modSets,
               e_xCon[t=0:T-1, i=0:I-1, k=0:Kx[i]-1,
                      j=0:T-1; co2Based[i+1]],
               xE[t, i, k, j] ==
-              heat_x[t, i, k, j] * devCarbonInt(mD, i, k, form="X")
+              heat_x[t, i, k, j] * devCarbonInt(mD, i, k, "X")
              )
 
   XLSX.openxlsx(pr.fname*"_x_carb.xlsx", mode="w") do xf
@@ -513,19 +513,19 @@ function genModel(mS::modSets,
       XLSX.rename!(sheet, "x")
       for i in 0:I-1
           ir = string(i+1)
-          v = [devCarbonInt(mD, i, k, form="X") for k in 0:Kx[i]-1]
+          v = [devCarbonInt(mD, i, k, "X") for k in 0:Kx[i]-1]
           sheet["A"*ir] = v
       end
   end
 
   @constraint(m, xOcapE[t=0:T-1, i=0:I-1, k=0:Kx[i]-1],
               xOcap[t, i, k] == 
-              devCapCost(mD, i, k, t, form="X")*xAlloc[t, i, k]
+              devCapCost(mD, i, k, t, "X")*xAlloc[t, i, k]
              )
 
   @constraint(m, zOcapE[t=0:T-1, i=0:I-1, k=0:Kz[i]-1],
               zOcap[t, i, k] == sum(
-                                 devCapCost(mD, i, k, t, form="R")*
+                                 devCapCost(mD, i, k, t, "R")*
                                  zTrans[t, i, k, j]
                                  for j in 0:N[i]-1
                                 )
@@ -546,14 +546,14 @@ function genModel(mS::modSets,
   @constraint(m,
               zFixOnM_E[t=0:T-1, i=0:I-1, k=0:Kz[i]-1],
               zFixOnM[t, i, k] ==
-              sum(devFixCost(mD, i, k, t, form="R") * Z[t, i, k, j]
+              sum(devFixCost(mD, i, k, t, "R") * Z[t, i, k, j]
                   for j in 0:N[i]-1 #: only related to the base age
                     ))
 
   @constraint(m,
               zVarOnM_E[t=0:T-1, i=0:I-1, k=0:Kz[i]-1],
               zVarOnM[t, i, k] ==
-              sum(devVarCost(mD, i, k, t, form="R") * Zgen[t, i, k, j]
+              sum(devVarCost(mD, i, k, t, "R") * Zgen[t, i, k, j]
                   for j in 0:N[i]-1 #: only related to the base age
                     ))
 
@@ -561,14 +561,14 @@ function genModel(mS::modSets,
   @constraint(m,
               xFixOnM_E[t=0:T-1, i=0:I-1, k=0:Kx[i]-1],
               xFixOnM[t, i, k] ==
-              sum(devFixCost(mD, i, k, t, form="X")*X[t, i, k, j]
+              sum(devFixCost(mD, i, k, t, "X")*X[t, i, k, j]
                   for j in 0:T-1)
              )
 
   @constraint(m,
               xVarOndM_E[t=0:T-1, i=0:I-1, k=0:Kx[i]-1],
               xVarOnM[t, i, k] ==
-              sum(devVarCost(mD, i, k, t, form="X")*Xgen[t, i, k, j]
+              sum(devVarCost(mD, i, k, t, "X")*Xgen[t, i, k, j]
                   for j in 0:T-1)
              )
 
@@ -597,7 +597,7 @@ function genModel(mS::modSets,
   @constraint(m, zFuelC_E[t=0:T-1, i=0:I-1, k=0:Kz[i]-1;
                           fuelBased[i+1]],
               zFuelC[t, i, k] ==
-              sum(devFuelCost(mD, i, k, t, form="R") * heat_z[t, i, k, j]
+              sum(devFuelCost(mD, i, k, t, "R") * heat_z[t, i, k, j]
                   for j in 0:N[i]-1)
              )
 
@@ -611,7 +611,7 @@ function genModel(mS::modSets,
                 XLSX.rename!(sheet, "z"*string(i)*string(k))
                 for t in 0:T-1
                     ts = string(t+1)
-                    v = devFuelCost(mD,i,k,t,form="R")
+                    v = devFuelCost(mD,i,k,t,"R")
                     sheet["A"*ts] = v
                 end
             end
@@ -620,7 +620,7 @@ function genModel(mS::modSets,
   @constraint(m, xFuelC_E[t=0:T-1, i=0:I-1, k=0:Kx[i]-1;
                           fuelBased[i+1]],
               xFuelC[t, i, k] ==
-              sum(devFuelCost(mD, i, k, t, form="X") * heat_x[t, i, k, j]
+              sum(devFuelCost(mD, i, k, t, "X") * heat_x[t, i, k, j]
                   for j in 0:T-1)
              )
 
@@ -634,7 +634,7 @@ function genModel(mS::modSets,
                 XLSX.rename!(sheet, "x"*string(i)*string(k))
                 for t in 0:T-1
                     ts = string(t+1)
-                    v = devFuelCost(mD,i,k,t,form="X")
+                    v = devFuelCost(mD,i,k,t,"X")
                     sheet["A"*ts] = v
                 end
             end
@@ -690,7 +690,7 @@ function genModel(mS::modSets,
                         j=0:N[i]-1],
               zRet[i, k, j]
               == sum(
-              (retCost(mD, i, t, 0) 
+              (retCost(mD, i, t, 0)
                + genScale*yrHr*cFact0[i+1]*saleLost(mD, i, t, j))
               * uz[t, i, k, j] for t in 0:T-1 if t >= zDelay[i,k])
               )
@@ -995,12 +995,14 @@ function EmConBudget!(
     # Greenhouse Gas Inventory Data Explorer
     co2_2010_2020 = 20_754_973_000.0
     # 19_315_983_000.0 # using the epa GHC
-    co22050 = co22010 * 0.01
+    co22050 = co22010 * 0.29
     #: Last term is a trapezoid minus the 2010-2015 gap
     @info("The budget: $(scaleCo2*((co22010 + co22050) * 0.5 * 41 -
                           co2_2010_2020))")
     co2OverallYr = m[:co2OverallYr]
 
+    co2v = 38_974_735_355.0
+    @info("co2v = $(scaleCo2*co2v)")
 
     @constraint(m, co2Budget,
                 sum(co2OverallYr[t] for t in 0:T-1) <=
@@ -1011,7 +1013,12 @@ function EmConBudget!(
                )
 end
 
-
+function Em0Yr!(m::JuMP.Model, mS::modSets, year::Int64)
+    co2OverallYr = m[:co2OverallYr]
+    T = mS.T
+    year = year > T-1 ? T-1 : year
+    @constraint(m, co2050_0, sum(co2OverallYr[t] for t in year:T-1)<=0)
+end
 
 function gridConUppahBound!(m::JuMP.Model, mS::modSets)
   techToId = Dict()
