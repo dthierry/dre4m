@@ -662,35 +662,69 @@ function genModel(mS::modSets,
   @constraint(m, wRet_E[i=0:I-1, j=0:N[i]-1],
               wRet[i, j] ==
               sum(
-              (retCost(mD, i, t, 0) 
+              (retCost(mD, i, i, t, j) 
                # M$/TWh * (1TWh/1000GWh) = M$/GWh
                + genScale*yrHr*cFact0[i+1]*saleLost(mD, i, t, j)
               )
               * uw[t, i, j] for t in 0:T-1)
              )
-    XLSX.openxlsx(pr.fname*"retcw.xlsx", mode="w") do xf
-        sh = 0
-        for i in 0:I-1
-            XLSX.addsheet!(xf)
-            sh += 1
-            sheet = xf[sh]
-            XLSX.rename!(sheet, "w"*string(i))
-            for t in 0:T-1
-                ts = string(t+1)
-                v = [retCost(mD, i, t, 0)+
-                     genScale*yrHr*cFact0[i+1]*saleLost(mD, i, t, j) 
-                     for j in 0:N[i]-1]
-                sheet["A"*ts] = v
-            end
-        end
-    end
+
+  XLSX.openxlsx(pr.fname*"_ret_cost_w.xlsx", mode="w") do xf
+      sh = 0
+      for i in 0:I-1
+          XLSX.addsheet!(xf)
+          sh += 1
+          sheet = xf[sh]
+          XLSX.rename!(sheet, "w"*string(i))
+          for t in 0:T-1
+              ts = string(t+1)
+              v = [retCost(mD, i, i, t, j) for j in 0:N[i]-1]
+              sheet["A"*ts] = v
+          end
+      end
+  end
+
+  XLSX.openxlsx(pr.fname*"_ret_cost_z.xlsx", mode="w") do xf
+      sh = 0
+      for i in 0:I-1
+          for k in 0:Kz[i]-1
+              XLSX.addsheet!(xf)
+              sh += 1
+              sheet = xf[sh]
+              XLSX.rename!(sheet, "z"*string(i)*"_"*string(k))
+              for t in 0:T-1
+                  ts = string(t+1)
+                  v = [retCost(mD, i, k, t, j, tag="R") 
+                       for j in 0:N[i]-1]
+                  sheet["A"*ts] = v
+              end
+          end
+      end
+  end
+
+  XLSX.openxlsx(pr.fname*"_sale_cost_w.xlsx", mode="w") do xf
+      sh = 0
+      for i in 0:I-1
+          XLSX.addsheet!(xf)
+          sh += 1
+          sheet = xf[sh]
+          XLSX.rename!(sheet, "w"*string(i))
+          for t in 0:T-1
+              ts = string(t+1)
+              v = [genScale*yrHr*cFact0[i+1]*saleLost(mD, i, t, j) 
+                   for j in 0:N[i]-1]
+              sheet["A"*ts] = v
+          end
+      end
+  end
+
 
 
   @constraint(m, zRet_E[i=0:I-1, k=0:Kz[i]-1,
                         j=0:N[i]-1],
               zRet[i, k, j]
               == sum(
-              (retCost(mD, i, t, 0)
+              (retCost(mD, i, k, t, j, tag="R")
                + genScale*yrHr*cFact0[i+1]*saleLost(mD, i, t, j))
               * uz[t, i, k, j] for t in 0:T-1 if t >= zDelay[i,k])
               )
@@ -700,27 +734,10 @@ function genModel(mS::modSets,
                         j=0:T-1],
               xRet[i, k, j] ==
               sum(
-              (retCost(mD, i, t, j, tag="X") 
+              (retCost(mD, i, k, t, j, tag="X") 
                + genScale*yrHr*cFact[i+1, j+1]*saleLost(mD, i, t, j, tag="X"))
               * ux[t, i, k, j] for t in 0:T-1 if t >= (j+xDelay[i, k]))
              )
-
-  XLSX.openxlsx(pr.fname*"retcx.xlsx", mode="w") do xf
-      sh = 0
-      for i in 0:I-1
-          XLSX.addsheet!(xf)
-          sh += 1
-          sheet = xf[sh]
-          XLSX.rename!(sheet, "x"*string(i))
-          for t in 0:T-1
-              ts = string(t+1)
-              v = [retCost(mD,i,t,j,tag="X")+
-                   genScale*yrHr*cFact[i+1,j+1]*saleLost(mD,i,t,j,tag="X") for j in 0:T-1 if t>=j]
-              sheet["A"*ts] = v
-          end
-      end
-  end
-
 
   @constraint(m, npv_e,
               npv ==
@@ -781,7 +798,7 @@ function genModel(mS::modSets,
 
   @constraint(m, termCwE[i=0:I-1, j=0:N[i]-1],
               termCw[i, j] ==
-              (retCost(mD, i, T-1, 0) +
+              (retCost(mD, i, i, T-1, j) +
                genScale*365*24*saleLost(mD, i, T-1, min(j, N[i]-1))
               ) * W[T-1, i, j]
              )
@@ -789,7 +806,7 @@ function genModel(mS::modSets,
   @constraint(m, termCxE[i=0:I-1, k=0:Kx[i]-1,
                          j=0:T-1],
               termCx[i, k, j] ==
-              (retCost(mD, i, T-1, j, tag="X") +
+              (retCost(mD, i, k, T-1, j, tag="X") +
                genScale*365*24*saleLost(mD, i, T-1, j, tag="X")
               )*X[T-1, i, k, j]
              )
@@ -797,7 +814,7 @@ function genModel(mS::modSets,
   @constraint(m, termCzE[i=0:I-1, k=0:Kz[i]-1,
                          j=0:N[i]-1],
               termCz[i, k, j] ==
-              (retCost(mD, i, T-1, 0) +
+              (retCost(mD, i, k, T-1, j) +
                genScale*365*24*saleLost(mD, i, T-1, min(j, N[i]-1))
               )*Z[T-1, i, k, j]
              )
@@ -822,7 +839,7 @@ function genModel(mS::modSets,
   function rLatentW(time, kind, age0)
       sL = servLife
       age = age0 + time
-      return retCost(mD, 0, 1, 0)*
+      return retCost(mD, 0, 0, 1, 0)*
       exp((age-sL[kind+1])/sL[kind+1])
       # retirementCost_age_1 * exp((age-servLife)/servLife)
   end
@@ -845,7 +862,7 @@ function genModel(mS::modSets,
       #return retCost(mD, kind, 1, -1)*
       #exp((age-sL(baseKind, kind))/sL(baseKind, kind))
       sL = servLife # same as w
-      return retCost(mD, 0, 1, 0)*
+      return retCost(mD, 0, 0, 1, 0)*
       exp((age-sL[kind+1])/sL[kind+1])
   end
 
@@ -866,7 +883,7 @@ function genModel(mS::modSets,
       si = mD.nwf.servLinc
       age = time - age0
       sL = (i, k) -> floor(Int, servLife[i+1]*(1+si[i, k]))
-      return retCost(mD, 0, 1, 0)*
+      return retCost(mD, 0, 0, 1, 0)*
       exp((age-sL(baseKind, kind))/sL(baseKind, kind))
   end
 
@@ -984,7 +1001,6 @@ Add the co2 budget constraint.
 function EmConBudget!(
         m::JuMP.Model,
         mS::modSets)
-    #: raison d'être
     X = m[:X]
     T = mS.T
     #: magic numbers
@@ -1017,7 +1033,10 @@ function Em0Yr!(m::JuMP.Model, mS::modSets, year::Int64)
     co2OverallYr = m[:co2OverallYr]
     T = mS.T
     year = year > T-1 ? T-1 : year
-    @constraint(m, co2050_0, sum(co2OverallYr[t] for t in year:T-1)<=0)
+    @constraint(m, co0_0, sum(co2OverallYr[t] for t in year:T-1)<=0)
+    #: set 90% for the year-1 so we have a baby slope.
+    @constraint(m, co0_1, co2OverallYr[year-1] <= co2OverallYr[0] * 0.1)
+
 end
 
 function gridConUppahBound!(m::JuMP.Model, mS::modSets)

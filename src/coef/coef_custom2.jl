@@ -126,8 +126,8 @@ end
     retCost(mD::modData, kind::Int64, time::Int64, age::Int64)
 Cost of retirement.
 """
-function retCost(mD::modData, kind::Int64, time::Int64, age0::Int64;
-        tag::String="") 
+function retCost(mD::modData, baseKind::Int64, kind::Int64, 
+        time::Int64, age0::Int64; tag::String="") 
   #: M$/GW
   cA = mD.ca
   iA = mD.ia
@@ -135,7 +135,7 @@ function retCost(mD::modData, kind::Int64, time::Int64, age0::Int64;
 
   #: old & retrof will have base age of (earliest), 
   # otw the year of creation for new cap
-  #: for old + retro set age0 to 0
+  #: for old + retro set baseage to 0
   baseAge = 0
   currentAge = time + age0
   if tag == "X"
@@ -147,14 +147,33 @@ function retCost(mD::modData, kind::Int64, time::Int64, age0::Int64;
   end
   #: Loan liability
   loanFrac = max(iA.loanP - currentAge, 0)/iA.loanP
-  #: just in case we go above
+
+  #: just in case we go above for new plants
   maxYr = size(cA.capC)[2]
   if baseAge > maxYr-1
       baseAge = maxYr-1
   end
-  loanLiability = loanFrac*cA.capC[kind+1, baseAge+1] * discount
-  #: Decomission
-  decom = cA.decomC[kind+1] * discount
+
+  #: Capital cost
+  if tag == "R"
+      m = mD.rtf.mCc[(baseKind, kind)]#: retrofit
+      m = m < 1. ? m + 1. : m  ### it has to be at least 1.
+      #println(baseKind, "\t", kind, "\t", m)
+  elseif tag == "X"
+      m = mD.nwf.mCc[(baseKind, kind)]#: retrofit
+  else
+      m = 1.0
+  end
+  
+  multiplier = "error"
+
+  if m >= 0
+      multiplier = m
+  end
+
+  capCost = multiplier*cA.capC[baseKind+1, baseAge+1]
+
+  loanLiability = loanFrac*capCost*discount
   return loanLiability # + decom # lostRev*365*24
 end
 
@@ -224,7 +243,7 @@ function zHeatRate(mD::modData,
     end
 
     hr0 = tA.heatRx[baseFuel+1, ageX+1]
-    if rtf.ubhr[baseKind, kind] 
+    if rtf.ubhr[baseKind, kind] # if true use the base heat rate.
         hr0 = tA.heatRw[baseFuel+1, age0+1]
         hr0 = hr0 <= 1e-06 ? tA.heatRwAvg[baseFuel+1] : hr0
     end

@@ -58,7 +58,7 @@ def stacksSingle(l: list, dmax: float) -> None:
                 alpha=0.7)
         a.set_xlabel("year")
         a.set_ylabel("GW")
-        a.set_ylim([0, dmax])
+        #a.set_ylim([0, dmax])
         a.set_title(dName[name])
         excelFileName = getFiles("*_effective.xlsx")
         efn = excelFileName.split(".")[1].replace("/", "")
@@ -275,7 +275,7 @@ def GetEmLine():
 def main():
     l, dmax = loadExcelOveralls()
     allStacked(l, dmax)
-    # stacksSingle(l, dmax)
+    #stacksSingle(l, dmax)
     # sBars(l)
     #return l, dmax
     #pltEmLine()

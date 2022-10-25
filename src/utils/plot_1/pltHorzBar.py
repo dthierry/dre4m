@@ -5,9 +5,38 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os, fnmatch
 
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "serif",
+    "font.serif": ["Palatino"],
+})
+
+
 # file = "/Users/dthierry/Projects/raids/src/utils/coalesce/v1/coalesce.xlsx"
 
 # eFile = pd.ExcelFile(file)
+
+def whichRetrofit(series) -> bool:
+    resRfList = []
+    resClList = []
+    resBaList = []
+    for i in series.index:
+        rRf = False
+        rCl = False
+        rBa = False
+        l = i.split("_")
+        while len(l) != 0:
+            label_ = l.pop()
+            if label_ == "RF":
+                rRf = True
+            elif label_ == "CLT":
+                rCl = True
+            elif label_ == "BAU":
+                rBa = True
+        resRfList.append(rRf)
+        resClList.append(rCl)
+        resBaList.append(rBa)
+    return resRfList, resClList, resBaList
 
 def getFiles(pattern, path="."):
     result = []
@@ -69,7 +98,7 @@ def plot_cap_bars():
     a1.barh(y_pos, rc_retro, align="center", height=0.5, left=cc_retro,
             color="gold", label="retro ret Cost", linewidth=1, edgecolor="k")
 #a1.ticklabel_format(style="scientific")
-    a1.set_xlabel("M\$")
+    a1.set_xlabel("Millions \$")
     a1.ticklabel_format(axis="x", style='sci', scilimits=(-3, 3))
     a1.legend(loc=2)
 
@@ -89,7 +118,7 @@ def plot_cap_bars():
     df8 = eFile.parse(sheet_name="cap_cost_new", index_col=0)
     cc_new = df8.iloc[15, 1:]
     df9 = eFile.parse(sheet_name="new_RetCost", index_col=0)
-    rc_new = df6.iloc[15, 1:]
+    rc_new = df9.iloc[15, 1:]
     f, a = plt.subplots(dpi=100)
 
 
@@ -111,8 +140,8 @@ def plot_cap_bars():
     a1.barh(y_pos, rc_new, align="center", height=0.5, left=cc_new+rc_old,
             color=clrl[4],
             label="new ret Cost", linewidth=0.1, edgecolor="k")
-    a1.set_xlabel("M\$")
-    a1.ticklabel_format(axis="x", style='sci', scilimits=(3, 4))
+    a1.set_xlabel("Millions \$")
+    #a1.ticklabel_format(axis="x", style='sci', scilimits=(3, 4))
     #
     a.legend(loc=0)
     a1.legend(loc=2)
@@ -135,23 +164,52 @@ def plot_em_bars():
     r_co2 = df2.iloc[12, 1:]
     n_co2 = df3.iloc[9, 1:]
     x_pos = np.arange(len(o_co2))
-    f, a = plt.subplots(dpi=100)
-    b1 = a.bar(x_pos, o_co2, align="edge", color="#d0b659",
-          label="old_co2")
-    b2 = a.bar(x_pos, r_co2, bottom=o_co2, align="edge", color="#59d0b6",
-          label="retro_co2")
-    b3 = a.bar(x_pos, n_co2, bottom=o_co2+r_co2, align="edge", color="#b659d0",
-          label="new_co2")
-    a.set_xticks(x_pos, labels=o_co2.index, rotation=90)
-    a.bar_label(b1, padding=2, fmt="%.1E", label_type="center")
-    #a.bar_label(b2, padding=0, fmt="%.2E")
-    a.bar_label(b3, padding=10, fmt="%.2E")
-    a.set_ylabel("MtCO2")
-    a.legend(loc=0)
+    f, a = plt.subplots(dpi=200)
+    b1 = a.bar(x_pos, o_co2, align="center",
+               color="#AD1272",
+               label="Exists. CO2",
+               alpha=0.8)
+    b2 = a.bar(x_pos, r_co2, bottom=o_co2,
+               align="center",
+               color="#136D9C",
+               label="Retro. CO2")
+    b3 = a.bar(x_pos, n_co2, bottom=o_co2+r_co2,
+               align="center",
+               color="#80BF10",
+               label="New CO2")
+    #
+    tot = o_co2.add(r_co2)
+    tot = tot.add(n_co2)
+    #
+    b = a.bar(x_pos, tot, align="center", color="none")
+    #
+    whichRf, whichCl, whichBa = whichRetrofit(tot)
+
+    for i in range(len(b)):
+        if whichRf[i]:
+            b[i].set_lw(1)
+            color = "r" if whichCl[i] else "k"
+            b[i].set_edgecolor(color)
+        if whichBa[i]:
+            b[i].set_hatch("/")
+
+    ticks = a.set_xticks(x_pos, labels=tot.index, rotation=90)
+    for i in range(len(ticks)):
+        if whichRf[i]:
+            color = "r" if whichCl[i] else "k"
+            ticks[i].get_children()[3].set_color(color)
+            # print(ticks[i].get_children())
+
+    a.set_title("Overall CO_2")
+    a.bar_label(b, padding=-50, fmt="%.2E", rotation=90)
+    a.set_ylabel("Million tCO2")
+    a.ticklabel_format(style="sci", axis="y", scilimits=(-1, 4))
+    legend = a.legend(loc="lower left",
+        bbox_to_anchor=(1.0, 0.0))
     f.savefig("co2.png", bbox_inches="tight")
 
 def plot_npv_bars():
-    clrl = ["#15D666",
+    clrl = ["tomato", #"#15D666",
             "#15D6C7",
             "#1585D6",
             "#1524D6",
@@ -174,6 +232,22 @@ def plot_npv_bars():
                    "old_FoNm", "retro_FoNm", "new_FoNm",
                    "old_RetCost", "retro_RetCost", "new_RetCost",
                    "old_fuel", "retro_fuel", "new_fuel"]
+    labels = [
+        "Cap. cost retro.",
+        "Cap. cost new",
+        "Exist. V O\&M c.",
+        "Retro. V O\&M c.",
+        "New V O\&M c.",
+        "Exist. F O\&M c.",
+        "Retro. F O\&M c.",
+        "New F O\&M c.",
+        "Exist. Retire. c.",
+        "Retro. Retire. c.",
+        "New Retire. c.",
+        "Exist. Fuel c.",
+        "Retro. Fuel c.",
+        "New Fuel c."]
+
     row = [12, 15,
            12, 12, 15,
            12, 12, 15,
@@ -183,26 +257,49 @@ def plot_npv_bars():
     eFile = pd.ExcelFile(file)
     i = 0
     x_pos = np.arange(2)
-    f, a = plt.subplots(dpi=100)
-    s0 = pd.Series(np.zeros(8))
+    f, a = plt.subplots(dpi=200)
+    #a.grid(visible=True, which="major", axis="y")
     for cs in cost_sheets:
         df = eFile.parse(sheet_name=cs, index_col=0)
         s = df.iloc[row[i], 1:]
+        if i == 0:
+            s0 = pd.Series(np.zeros(s.size))
         print(i, cs, row[i], s, s0)
         x_pos = np.arange(len(s))
-        b = a.bar(x_pos, s, align="edge", bottom=s0, label=cs, color=clrl[i])
+        b = a.bar(x_pos,
+                  s,
+                  align="center",
+                  bottom=s0,
+                  label=labels[i],
+                  color=clrl[i])
         if i == 0:
             s0 = s.copy()
         else:
             s0 = s0.add(s)
         i += 1
-    a.set_xticks(x_pos, labels=s.index, rotation=90)
-    a.set_ylabel("M\$")
+    whichRf, whichCl, whichBa = whichRetrofit(s)
+    b = a.bar(x_pos, s0, align="center", color="none")
+    for i in range(len(b)):
+        if whichRf[i]:
+            b[i].set_lw(1)
+            color = "r" if whichCl[i] else "k"
+            b[i].set_edgecolor(color)
+        if whichBa[i]:
+            b[i].set_hatch("/")
+
+    ticks = a.set_xticks(x_pos, labels=s.index, rotation=90)
+    for i in range(len(ticks)):
+        if whichRf[i]:
+            color = "r" if whichCl[i] else "k"
+            ticks[i].get_children()[3].set_color(color)
+            # print(ticks[i].get_children())
+    a.set_ylabel("Millions \$")
+    a.set_title("Overall costs")
 
     legend = a.legend(loc="lower left",
         bbox_to_anchor=(1.0, 0.0)
     )
-    a.bar_label(b, padding=10, fmt="%.2E")
+    a.bar_label(b, padding=-50, fmt="%.2E", rotation=90)
     f.savefig("npv.png", bbox_inches="tight")
 
 if __name__ == "__main__":
