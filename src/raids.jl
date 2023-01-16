@@ -12,7 +12,7 @@ module raids
   include("./gestalt/modKern2.jl")
   include("./pre/preprocess.jl")
   include("./coef/coef_custom3.jl")
-  include("./mods/m4-8.jl")
+  include("./mods/m4-82.jl")
   include("./post/postprocess2.jl")
   version = VersionNumber(0, 4, 6)
   @info "RAIDS $(version) by DT@2022"

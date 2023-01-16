@@ -16,17 +16,17 @@ CMAP0 = "tab20c"
 
 #tName = ["PC", "NGGT", "NGCC" ,"P" ,"B" ,"N" ,"H" ,"W" ,"SPV" ,"STH" ,"G"]
 
-tName = ["pc", "nggt", "ngcc" ,"p" ,"b" ,"n" ,"h" ,"w" ,"spv" ,"sth" ,"g"]
+tName = ["pc", "ct", "cc" ,"p" ,"b" ,"n" ,"h" ,"w" ,"spv" ,"sth" ,"g"]
 tName = [n.swapcase() for n in tName]
-dName = {"w": "Existing", "z": "Retrofit", "x": "New", 
+dName = {"w": "Existing", "z": "Retrofit", "x": "New",
         "uw": "Ret. old", "uz": "Ret. retrof.", "ux": "Ret. new"}
 
-greyes = ["dark grey", "battleship grey", "blue grey", 
-        "cement", "charcoal grey", "brown grey", 
-        "cool grey", "dark blue grey", "green grey", 
+greyes = ["dark grey", "battleship grey", "blue grey",
+        "cement", "charcoal grey", "brown grey",
+        "cool grey", "dark blue grey", "green grey",
         "grey teal"]
-colList = ["berry", "blood", "blueberry", "blurple", 
-        "dark sky blue", "deep lavender", "butterscotch", 
+colList = ["berry", "blood", "blueberry", "blurple",
+        "dark sky blue", "deep lavender", "butterscotch",
         "primary blue", "cool blue", "cobalt"]
 
 colL = greyes
@@ -86,3 +86,11 @@ kinds = {}
 kinds = {"z": kinds_z, "x": kinds_x, "uz": kinds_z, "ux": kinds_x, "w": kinds_w, "uw": kinds_w}
 
 
+def export_legend(legend, filename="legend.png"):
+    #: be sure to have  --> bbox_to_anchor=(1.0, 0.0)
+    fig  = legend.figure
+    fig.canvas.draw()
+    bbox  = legend.get_window_extent().transformed(
+        fig.dpi_scale_trans.inverted()
+    )
+    fig.savefig(filename, dpi=300, bbox_inches=bbox)

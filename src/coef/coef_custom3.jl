@@ -363,3 +363,48 @@ function devFuelCost(mD::modData,
     return multiplier*cA.fuelC[baseFuel+1, time+1]*discount 
 end
 
+
+
+function devDerating(mD::modData, 
+                   baseKind::Int64, 
+                   kind::Int64,
+                   age0::Int64,
+                   time::Int64, form::String)
+    tA = mD.ta
+    cA = mD.ca
+    iA = mD.ia
+    rtf = mD.rtf
+    if form == "R"
+        f = mD.rtf
+    elseif form == "X"
+        f = mD.nwf
+    end
+    #: evaluate retrofit
+    multiplier = 1.e0
+
+    if rtf.ccHrRedBool[baseKind, kind]
+        hr0 = tA.heatRw[baseKind+1, age0+1]
+        hrToEff = mD.misc.hrToEff # scale factor
+        # convert to hr->eff
+        eff = 1/(hr0*hrToEff)
+        deltaEta = rtf.ccHrRedVal[baseKind, kind] # eff points
+        deltaEta /= 100e0
+        if eff <= 0.e0
+            println("efficiency for this RF is less than zero (DERATING)")
+            println("base $(baseKind) kind $(kind)")
+            #throw(error())
+        else
+            multiplier = 1.0-(deltaEta/eff)
+            println("multiplier $(multiplier)::$(baseKind)-$(kind)")
+            if !(0e0<=multiplier<=1e0)
+                println("check values!")
+                println("$(hr0) $(eff) $(deltaEta) $(multiplier)")
+                #throw(error())
+                multiplier = 1e-08 # make no power
+            end
+        end
+    end
+    #:
+    return multiplier 
+end
+

@@ -82,7 +82,9 @@ def main(argv):
     a.set_ylabel("Cost (M\$)")
     f.savefig("myfig2.png", format="png")
 
-    f, a = plt.subplots(nrows=1, ncols=2, sharex="all", sharey="all", constrained_layout=True, dpi=200)
+    f, a = plt.subplots(nrows=1, ncols=2,
+                        sharex="all", sharey="all",
+                        constrained_layout=True, dpi=200)
     df_xCost = pd.read_excel(file + "_stats.xlsx", sheet_name="cap_cost_new")
     df_xCap = pd.read_excel(file + "_stats.xlsx", sheet_name="new_alloc")
     df_xCost.drop(df_xCost.tail(1).index, inplace=True) # drop the sum bit
@@ -115,7 +117,8 @@ def main(argv):
     #a[0].set_xscale("log")
     #a[0].ticklabel_format(axis="both", style="sci", scilimits=(-1,1))
     ax1 = a[0].inset_axes([0.25, 0.25, 0.5, 0.5])
-    cb = f.colorbar(smb(norm=norm, cmap=cmap), ax=a[0], fraction=0.05, ticks=[0, 1])
+    cb = f.colorbar(smb(norm=norm, cmap=cmap), ax=a[0],
+                    fraction=0.05, ticks=[0, 1])
     cb.set_label("Relative Age")
     cb.ax.locator_params(nbins=4)
     cb.ax.set_yticklabels(["Newer", "Older"], rotation=90)

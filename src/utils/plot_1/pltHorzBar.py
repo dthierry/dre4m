@@ -1,5 +1,10 @@
 #!/usr/bin/env python
-
+#vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
+#############################################################################
+#  Copyright 2022, David Thierry, and contributors
+#  This Source Code Form is subject to the terms of the MIT
+#  License.
+#############################################################################
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -66,17 +71,25 @@ def plot_cap_bars():
     file = getFiles("coalesce.xlsx", path=".")
     print(file)
     eFile = pd.ExcelFile(file)
+
     df1 = eFile.parse(sheet_name="old_capacity_ret", index_col=0)
-    old_cap_ret = -1*df1.iloc[12, 1:]
+    old_cap_ret = -1*df1.tail(1).iloc[0, 1:]
+
     df2 = eFile.parse(sheet_name="retro_alloc", index_col=0)
-    retro_alloc = df2.iloc[12, 1:]
+    #retro_alloc = df2.iloc[12, 1:]
+    retro_alloc = df2.tail(1).iloc[0, 1:]
+
     df3 = eFile.parse(sheet_name="retro_retired", index_col=0)
-    retro_retired = -1*df3.iloc[12, 1:]
+    #retro_retired = -1*df3.iloc[12, 1:]
+    retro_retired = -1*df3.tail(1).iloc[0, 1:]
 
     df4 = eFile.parse(sheet_name="cap_cost_retro", index_col=0)
-    cc_retro = df4.iloc[12, 1:]
+    #cc_retro = df4.iloc[12, 1:]
+    cc_retro = df4.tail(1).iloc[0, 1:]
+
     df5 = eFile.parse(sheet_name="retro_RetCost", index_col=0)
-    rc_retro = df5.iloc[12, 1:]
+    #rc_retro = df5.iloc[12, 1:]
+    rc_retro = df5.tail(1).iloc[0, 1:]
 
     oc_retro = cc_retro + rc_retro
 
@@ -97,7 +110,6 @@ def plot_cap_bars():
             label="retro Cap cost", linewidth=1, edgecolor="k")
     a1.barh(y_pos, rc_retro, align="center", height=0.5, left=cc_retro,
             color="gold", label="retro ret Cost", linewidth=1, edgecolor="k")
-#a1.ticklabel_format(style="scientific")
     a1.set_xlabel("Millions \$")
     a1.ticklabel_format(axis="x", style='sci', scilimits=(-3, 3))
     a1.legend(loc=2)
@@ -112,15 +124,22 @@ def plot_cap_bars():
     f.clf()
 
     df6 = eFile.parse(sheet_name="old_RetCost", index_col=0)
-    rc_old = df6.iloc[12, 1:]
-    df7 = eFile.parse(sheet_name="new_alloc", index_col=0)
-    new_alloc = df7.iloc[15, 1:]
-    df8 = eFile.parse(sheet_name="cap_cost_new", index_col=0)
-    cc_new = df8.iloc[15, 1:]
-    df9 = eFile.parse(sheet_name="new_RetCost", index_col=0)
-    rc_new = df9.iloc[15, 1:]
-    f, a = plt.subplots(dpi=100)
+    #rc_old = df6.iloc[12, 1:]
+    rc_old = df6.tail(1).iloc[0, 1:]
 
+    df7 = eFile.parse(sheet_name="new_alloc", index_col=0)
+    #new_alloc = df7.iloc[15, 1:]
+    new_alloc = df7.tail(1).iloc[0, 1:]
+
+    df8 = eFile.parse(sheet_name="cap_cost_new", index_col=0)
+    #cc_new = df8.iloc[15, 1:]
+    cc_new = df8.tail(1).iloc[0, 1:]
+
+    df9 = eFile.parse(sheet_name="new_RetCost", index_col=0)
+    #rc_new = df9.iloc[15, 1:]
+    rc_new = df9.tail(1).iloc[0, 1:]
+
+    f, a = plt.subplots(dpi=100)
 
     a.barh(y_pos, old_cap_ret, align="center",
            color=clrl[0], label="retirements old")
@@ -304,6 +323,6 @@ def plot_npv_bars():
 
 if __name__ == "__main__":
    plot_cap_bars()
-   plot_em_bars()
-   plot_npv_bars()
+   # plot_em_bars()
+   # plot_npv_bars()
 

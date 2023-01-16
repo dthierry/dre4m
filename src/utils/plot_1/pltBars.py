@@ -19,10 +19,11 @@ plt.rcParams.update({
 
 suffix = {}
 suffix["w"] = ""
-suffix["z"] = "Retro."
+# suffix["z"] = "Retro."
+suffix["z"] = "RF"
 suffix["x"] = "New"
 suffix["uw"] = "Ret. old"
-suffix["uz"] = "Ret. retro."
+suffix["uz"] = "Ret. RF"
 suffix["ux"] = "Ret. new"
 
 (kinds_z, kinds_x) = loadKinds()
@@ -33,7 +34,7 @@ def export_legend(legend, filename="legend.png"):
     bbox  = legend.get_window_extent().transformed(
         fig.dpi_scale_trans.inverted()
     )
-    fig.savefig(filename, dpi="figure", bbox_inches=bbox)
+    fig.savefig(filename, dpi=300, bbox_inches=bbox)
 
 def stacksSingle(l: list, dmax: float) -> None:
     """ Generates a single stacked plot for every name """
@@ -210,19 +211,22 @@ def sBars(l: list) -> None:
         # format the names/labels
         if name == "w":
             cNames = [col.split("_") + ["0"] for col in df.columns]
+            labels = [tName[int(cName[1])] + " " + suffix[name]
+                      for cName in cNames]
         else:
             cNames = [col.split("_") for col in df.columns]
+            labels = [tName[int(cName[1])] + " " + suffix[name]
+                      + " " + cName[2] for cName in cNames]
         print(cNames)
         baseHatch = ""
         if name == "z":
             baseHatch = "/"
         elif name == "x":
             baseHatch = "."
-        print("basehatch\t", baseHatch)
+        #print("basehatch\t", baseHatch)
 
         all_colours = [cmap(norm(int(cName[1]))) for cName in cNames]
-        labels = [tName[int(cName[1])] + " " + suffix[name]
-                for cName in cNames]
+
         hatches = [baseHatch*(int(cName[2])+1) for cName in cNames]
         print(all_colours)
         print(hatches)
@@ -289,8 +293,10 @@ def sBars(l: list) -> None:
 
     excelFileName = getFiles("*_effective.xlsx")
     efn = excelFileName.split(".")[1].replace("/", "")
+    f.tight_layout()
     f.savefig(efn + "_sBar" + ".png", format="png")
-    legend = a.legend(loc=0)
+    legend = a.legend(bbox_to_anchor=(1.0, 1.1), ncol=9)
+    #legend = a.legend(loc=0, nrow=11)
     export_legend(legend,
             "legend_" + name + "_" + efn + "_sBarSingle" + ".png")
 

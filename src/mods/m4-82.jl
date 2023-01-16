@@ -1,10 +1,16 @@
 #vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
 #############################################################################
-#  Copyright 2022, David Thierry, and contributors
+#  Copyright 2022, UChicago LLC. Argonne 
 #  This Source Code Form is subject to the terms of the MIT
 #  License.
 #############################################################################
-# implement changes of how we look at age
+
+# log:
+# implement changes of how age is considered
+#
+#
+#80#############################################################################
+
 using JuMP
 
 """
@@ -17,36 +23,37 @@ function genModel(mS::modSets,
         no_rf::Bool=false,
         no_delay_z::Bool=false,
         no_delay_x::Bool=false)::JuMP.Model
-    #: There is model sets: mS, and
-    # model data: mD.
-    #: Initial set
     @info "Generating model..."
+    
+    #: model sets mS, and model data mD 
     T = mS.T
     I = mS.I
     N = mS.N
     Nx = mS.Nx
     Nz = mS.Nz
     Kz = mS.Kz
-
+    
+    #: if no retrofits are enabled, zero the retrofit sets
     if no_rf == true
         for k in keys(Kz)
             Kz[k] = 0
         end
-        #: Hacky way of zeroe-ing-out the kinds file
         mD.ia.kinds_z = zeros(Int, length(mD.ia.kinds_z))
     end
 
     Kx = mS.Kx
 
     servLife = mD.ia.servLife
-
     zDelay = mD.rtf.delay
+
+    #: if no lead time (rf), zero the delay sets
     if no_delay_z
         for k in keys(zDelay)
             zDelay[k] = 0
         end
     end
-
+    
+    #: if no lead time (rf), zero the delay sets
     xDelay = mD.nwf.delay
     if no_delay_x
         for k in keys(xDelay)
@@ -59,7 +66,7 @@ function genModel(mS::modSets,
     bLoadTech = mD.ia.bLoadTech
 
     initCap = mD.ta.initCap
-    d = mD.ta.nachF
+    d = mD.ta.nachF # demand
     maxDelay = maximum(values(xDelay))
     
     genScale = mD.misc.genScale
@@ -71,6 +78,8 @@ function genModel(mS::modSets,
     pr.caller = @__FILE__
     jrnlst!(pr, jrnl)
 
+    yrHr = 24* 365.  # hours in a year
+    
     #: Model creation
     m = Model()
     # Variables
@@ -156,7 +165,6 @@ function genModel(mS::modSets,
     #: hey let's just create effective generation variables instead
     #: it seems that the capacity factors are the same regardless of
     #: us having retrofits, new capacity, etc.
-    yrHr = 24* 365.  # hours in a year
 
     @variable(m,
               Wgen[t=0:T-1, i=0:I-1,
@@ -361,7 +369,8 @@ function genModel(mS::modSets,
   @constraint(m, ZgEq[t=0:T-1, i=0:I-1, k=0:Kz[i]-1,
                       j=0:N[i]-1],
               Zgen[t, i, k, j] ==
-              genScale * yrHr * cFact0[i+1] * Z[t, i, k, j]
+              devDerating(mD, i, k, j, t, "R")*genScale*yrHr*cFact0[i+1]*
+              Z[t, i, k, j]
               )
 
   @constraint(m, XgEq[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, j=0:T-1],
@@ -796,7 +805,7 @@ function genModel(mS::modSets,
   @constraint(m, termCwE[i=0:I-1, j=0:N[i]-1],
               termCw[i, j] ==
               (retCost(mD, i, i, T-1, j) +
-               genScale*365*24*saleLost(mD, i, T-1, min(j, N[i]-1))
+               genScale*yrHr*cFact0[i+1]*saleLost(mD, i, T-1, min(j, N[i]-1))
               ) * W[T-1, i, j]
              )
 
@@ -804,7 +813,7 @@ function genModel(mS::modSets,
                          j=0:T-1],
               termCx[i, k, j] ==
               (retCost(mD, i, k, T-1, j, tag="X") +
-               genScale*365*24*saleLost(mD, i, T-1, j, tag="X")
+               genScale*yrHr*cFact[i+1, j+1]*saleLost(mD, i, T-1, j, tag="X")
               )*X[T-1, i, k, j]
              )
 
@@ -819,10 +828,10 @@ function genModel(mS::modSets,
     # time horizon
   @constraint(m, termCE,
               termCost ==
-              #sum(termCw[i, j]
-              #    for i in 0:I-1
-              #    for j in 0:N[i]-1)
-              # +
+              sum(termCw[i, j]
+                  for i in 0:I-1
+                  for j in 0:N[i]-1)
+               +
               sum(termCx[i, k, j]
                     for i in 0:I-1
                     for k in 0:Kx[i]-1

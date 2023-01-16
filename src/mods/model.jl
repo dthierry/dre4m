@@ -1,12 +1,19 @@
 #vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
 #############################################################################
-#  Copyright 2022, David Thierry, and contributors
+#  Copyright 2022, UChicago LLC. Argonne 
 #  This Source Code Form is subject to the terms of the MIT
 #  License.
 #############################################################################
-# implement changes of how we look at age
+
+# log:
+# implement changes of how age is considered
+#
+#
+#80#############################################################################
+
 using JuMP
 
+#80#############################################################################
 """
     genModel(mS::modSets, modData::modData)::JuMP.Model
 Generates model with variables and constraints.
@@ -17,36 +24,37 @@ function genModel(mS::modSets,
         no_rf::Bool=false,
         no_delay_z::Bool=false,
         no_delay_x::Bool=false)::JuMP.Model
-    #: There is model sets: mS, and
-    # model data: mD.
-    #: Initial set
     @info "Generating model..."
+    
+    #: model sets mS, and model data mD 
     T = mS.T
     I = mS.I
     N = mS.N
     Nx = mS.Nx
     Nz = mS.Nz
     Kz = mS.Kz
-
+    
+    #: if no retrofits are enabled, zero the retrofit sets
     if no_rf == true
         for k in keys(Kz)
             Kz[k] = 0
         end
-        #: Hacky way of zeroe-ing-out the kinds file
         mD.ia.kinds_z = zeros(Int, length(mD.ia.kinds_z))
     end
 
     Kx = mS.Kx
 
     servLife = mD.ia.servLife
-
     zDelay = mD.rtf.delay
+
+    #: if no lead time (rf), zero the delay sets
     if no_delay_z
         for k in keys(zDelay)
             zDelay[k] = 0
         end
     end
-
+    
+    #: if no lead time (rf), zero the delay sets
     xDelay = mD.nwf.delay
     if no_delay_x
         for k in keys(xDelay)
@@ -59,36 +67,44 @@ function genModel(mS::modSets,
     bLoadTech = mD.ia.bLoadTech
 
     initCap = mD.ta.initCap
-    d = mD.ta.nachF
+    d = mD.ta.nachF # demand
     maxDelay = maximum(values(xDelay))
     
     genScale = mD.misc.genScale
 
     cFact = mD.ta.cFac
     cFact0 = [mD.ta.cFac[i+1, 1] for i in 0:I-1]
-
+    
+    #: Set journal
     jrnl = j_log_f
     pr.caller = @__FILE__
     jrnlst!(pr, jrnl)
 
+    yrHr = 24* 365.  # hours in a year
+    
     #: Model creation
+    #
+    # The model
     m = Model()
-    # Variables
-    # this goes to N just because we need to constrain z at N-1
-    # existing asset (GWh)
+    #: Variables
+   
+    ############ Variables definition $$$$$$$$$$$$
+
+    # Assets
+    ## existing asset
     @variable(m,
               w[t=0:T, i=0:I-1,
                 j=0:N[i]-1]
               >= 0e0
              )
 
-    # retired existing asset
+    ##  retired existing asset
     @variable(m, uw[t = 0:T, i = 0:I-1,
                     j = 0:N[i]-1]
               >= 0e0
              )
 
-    # new asset
+    ##  new asset
     @variable(m, x[t = 0:T,
                    i = 0:I-1, k = 0:Kx[i]-1,
                    j = 0:T; t>=(j+xDelay[i, k])]
@@ -96,41 +112,45 @@ function genModel(mS::modSets,
              )
     #: made a ficticious point Nx so we can know how much is retired because it
     #: becomes too old
-    #
+    
+
+    ## new assets allocations
     @variable(m,
               xAlloc[t=0:T, i=0:I-1, k=0:Kx[i]-1]
               >= 0e0)
 
-    # retired new asset
+    ##  retired new asset
     @variable(m, ux[t = 0:T,
                     i = 0:I-1, k = 0:Kx[i]-1,
                     j = 0:T;
                     t >= (j+xDelay[i, k])]
               >= 0)
-    # can't retire at j = 0
+    #: can't retire at j = 0
 
-    # retrofitted asset
+    ##  rf asset
     @variable(m,
               z[t=0:T, i=0:I-1, k=0:Kz[i]-1,
                 j=0:N[i]-1;
                 t >= zDelay[i, k]]
               >= 0)
     #: we have to recognize the fact that no retrofit tally can be kept at
-    # any point in time that is between 0 and the zDelay amount.
+    #: any point in time that is between 0 and the zDelay amount.
 
-    #: the retrofit can't happen at the end of life of a plant, i.e., j goes from
-    #: 0 to N[i]-12
-    #: the retrofit can't happen at the beginning of life of a plant, i.e. j = 0
-    #: made a ficticious point Nxj so we can know how much is retired because it
-    #: becomes too old
+    #: the retrofit can't happen at the end of life of a plant, i.e., 
+    #: j goes from 0 to N[i]-12
+    #: the retrofit can't happen at the beginning of life of a plant, 
+    #: i.e. j = 0
+    #: made a ficticious point Nxj so we can know how much is retired because 
+    #: it becomes too old
 
+    ##  rf asset transition
     @variable(m,
               zTrans[t = 0:T, i = 0:I-1, k = 0:Kz[i]-1,
                      j = 0:N[i]-1]
               >= 0)
     #: as opposed to "z", the zTrans variable can be defined from T=0
 
-    # retired retrofit
+    ## retired retrofit
     @variable(m,
               uz[t = 0:T, i = 0:I-1, k = 0:Kz[i]-1,
                  j = 0:N[i]-1; t >= zDelay[i,k]]
@@ -138,15 +158,16 @@ function genModel(mS::modSets,
     # can't retire at the first year of retrofit, jk = 0
     # can't retire at the last year of retrofit, i.e. jk = |Nxj|
     #: no retirements at the last age (n-1), therefore only goes to n-2
-
-    # Effective capacity old
+    
+    # Effective capacity
+    ## Effective capacity old
     @variable(m, W[t=0:T-1, i=0:I-1,
                    j=0:N[i]-1])
-
+    ## Effective capacity rf
     @variable(m,
               Z[t=0:T-1, i=0:I-1, k=0:Kz[i]-1,
                 j=0:N[i]-1])
-    # Effective capacity new
+    ## Effective capacity new
     @variable(m,
               X[t=0:T-1,
                 i=0:I-1, k=0:Kx[i]-1,
@@ -156,26 +177,30 @@ function genModel(mS::modSets,
     #: hey let's just create effective generation variables instead
     #: it seems that the capacity factors are the same regardless of
     #: us having retrofits, new capacity, etc.
-    yrHr = 24* 365.  # hours in a year
-
+    # Generation variables
+    ## generation existing
     @variable(m,
               Wgen[t=0:T-1, i=0:I-1,
                    j=0:N[i]-1]
              )
 
+    ## generation rf
     @variable(m,
               Zgen[t=0:T-1, i=0:I-1, k=0:Kz[i]-1,
                    j=0:N[i]-1]
              )
 
+    ## generation new
     @variable(m,
               Xgen[t=0:T-1, i=0:I-1, k=0:Kx[i]-1,
                    j=0:T-1])
 
     #: Generation (GWh)
     @variable(m, sGen[t = 1:T-1, i = 0:I-1]) #: supply generated
+    
 
-    @variable(m, heat_w[t = 0:T-1, i=0:I-1,
+    @variable(m, 
+              heat_w[t = 0:T-1, i=0:I-1,
                         j = 0:N[i]-1; fuelBased[i+1]])
 
     @variable(m,
@@ -187,75 +212,96 @@ function genModel(mS::modSets,
               heat_x[t=0:T-1,
                      i=0:I-1, k=0:Kx[i]-1,
                      j=0:T-1; fuelBased[i+1]])
+
     # Carbon emission (tCO2)
+    ## emissions new
     @variable(m,
               wE[t = 0:T-1, i = 0:I-1,
                  j = 0:N[i]-1; co2Based[i+1]]
               >= 0e0
              )
     #: ♪ Ah&eM
+    ## emission rf
     @variable(m,
               zE[t=0:T-1, i=0:I-1, k=0:Kz[i]-1,
                  j=0:N[i]-1; co2Based[i+1]]
               >= 0e0
              )
-
+    ## emission new
     @variable(m,
               xE[t=0:T-1, i=0:I-1, k=0:Kx[i]-1,
                  j=0:T-1; co2Based[i+1]]
               >= 0e0
              )
 
-
-    # (overnight) Capital for new capacity
+    # Capital cost
+    ## (overnight) Capital for new capacity
     @variable(m, xOcap[t=0:T-1, i=0:I-1, k=0:Kx[i]-1])
 
-    # (overnight) Capital for retrofits
+    ## (overnight) Capital for retrofits
     @variable(m, zOcap[t=0:T-1, i=0:I-1, k=0:Kz[i]-1])
-    # Operation and Maintenance for existing
-    #: Do we have to partition this term?
+    
+    # Operation and Maintenance 
+    # O and M for existing
+    ## fixed cost existing
     @variable(m, wFixOnM[t=0:T-1, i=0:I-1])
+    ## var cost existing
     @variable(m, wVarOnM[t=0:T-1, i=0:I-1])
 
     # O and M for retrofit
+    ## fixed cost rf 
     @variable(m, zFixOnM[t=0:T-1, i=0:I-1, k=0:Kz[i]-1])
+    # var cost rf 
     @variable(m, zVarOnM[t=0:T-1, i=0:I-1, k=0:Kz[i]-1])
+
     # O and M for new
+    ## fixed cost new 
     @variable(m, xFixOnM[t=0:T-1, i=0:I-1, k=0:Kx[i]-1])
+    ## var cost new 
     @variable(m, xVarOnM[t=0:T-1, i=0:I-1, k=0:Kx[i]-1])
-    # Fuel
+    
+    # Fuel and CO
+    ## fuel existing
     @variable(m, wFuelC[t=0:T-1, i=0:I-1; fuelBased[i+1]])
 
+    ## fuel rf 
     @variable(m, zFuelC[t=0:T-1, i=0:I-1, k=0:Kz[i]-1; fuelBased[i+1]])
 
+    ## fuel new 
     @variable(m, xFuelC[t=0:T-1, i=0:I-1, k=0:Kx[i]-1; fuelBased[i+1]])
-
+    
+    ## overall cow
     @variable(m, co2OverallYr[t=0:T-1])
 
-    # Natural "organic" retirement
-
-    # "Forced" retirement
+    # Endogenous retirement cost
+    ##  existing retired cost
     @variable(m, wRet[i=0:I-1,
                       j=0:N[i]-1])
+    ##  rf retired cost
     @variable(m, zRet[i=0:I-1, k=0:Kz[i]-1,
                       j=0:N[i]-1])
+    ##  new retired cost
     @variable(m, xRet[i=0:I-1, k=0:Kx[i]-1,
                       j=0:T])
 
     # Net present value
     @variable(m, npv) # ≥ 1000. * 2000.)
 
-    #: Terminal cost
+    # Terminal cost
+    ## terminal cost existing
     @variable(m, termCw[i=0:I-1,
                         j=0:N[i]-1])
 
+    ## terminal cost new
     @variable(m, termCx[i=0:I-1, k=0:Kx[i],
                         j=0:T-1])
 
+    ## terminal cost rf
     @variable(m, termCz[i=0:I-1, k=0:Kz[i]-1,
                         j=0:N[i]-1])
-
+    ## overall
     @variable(m, termCost >= 0) #: overall
+
 
     ############ Constraint definition $$$$$$$$$$$$
 
@@ -361,7 +407,8 @@ function genModel(mS::modSets,
   @constraint(m, ZgEq[t=0:T-1, i=0:I-1, k=0:Kz[i]-1,
                       j=0:N[i]-1],
               Zgen[t, i, k, j] ==
-              genScale * yrHr * cFact0[i+1] * Z[t, i, k, j]
+              devDerating(mD, i, k, j, t, "R")*genScale*yrHr*cFact0[i+1]*
+              Z[t, i, k, j]
               )
 
   @constraint(m, XgEq[t=0:T-1, i=0:I-1, k=0:Kx[i]-1, j=0:T-1],
@@ -736,6 +783,7 @@ function genModel(mS::modSets,
               * ux[t, i, k, j] for t in 0:T-1 if t >= (j+xDelay[i, k]))
              )
 
+  #: npv constraint
   @constraint(m, npv_e,
               npv ==
               # overnight
@@ -796,7 +844,7 @@ function genModel(mS::modSets,
   @constraint(m, termCwE[i=0:I-1, j=0:N[i]-1],
               termCw[i, j] ==
               (retCost(mD, i, i, T-1, j) +
-               genScale*365*24*saleLost(mD, i, T-1, min(j, N[i]-1))
+               genScale*yrHr*cFact0[i+1]*saleLost(mD, i, T-1, min(j, N[i]-1))
               ) * W[T-1, i, j]
              )
 
@@ -804,7 +852,7 @@ function genModel(mS::modSets,
                          j=0:T-1],
               termCx[i, k, j] ==
               (retCost(mD, i, k, T-1, j, tag="X") +
-               genScale*365*24*saleLost(mD, i, T-1, j, tag="X")
+               genScale*yrHr*cFact[i+1, j+1]*saleLost(mD, i, T-1, j, tag="X")
               )*X[T-1, i, k, j]
              )
 
@@ -819,10 +867,10 @@ function genModel(mS::modSets,
     # time horizon
   @constraint(m, termCE,
               termCost ==
-              #sum(termCw[i, j]
-              #    for i in 0:I-1
-              #    for j in 0:N[i]-1)
-              # +
+              sum(termCw[i, j]
+                  for i in 0:I-1
+                  for j in 0:N[i]-1)
+               +
               sum(termCx[i, k, j]
                     for i in 0:I-1
                     for k in 0:Kx[i]-1
@@ -901,6 +949,7 @@ function genModel(mS::modSets,
 end
 
 
+#80#############################################################################
 """
     genObj()
 Generates the objective function.
@@ -918,7 +967,7 @@ function genObj!(m::JuMP.Model, mS::modSets, mD::modData;
   zDelay = mD.rtf.delay
   xDelay = mD.nwf.delay
 
-   bLoadTech = mD.ia.bLoadTech
+  bLoadTech = mD.ia.bLoadTech
   xOcap = m[:xOcap]
   npv = m[:npv]
   termCost = m[:termCost]
@@ -945,6 +994,7 @@ function genObj!(m::JuMP.Model, mS::modSets, mD::modData;
                      )/1e3)
 end
 
+#80#############################################################################
 """
     fixDelayed0()
 Fix the variables at times less than -1.
@@ -967,6 +1017,7 @@ function fixDelayed0!(m::JuMP.Model, mS::modSets, mD::modData)
 end
 
 
+#80#############################################################################
 """
   gridConWind()
 Add the wind ratio constraint for new techs.
@@ -991,6 +1042,7 @@ function gridConWind!(
                )
 end
 
+#80#############################################################################
 """
     gridConBudget(m::JuMP.Model, mS::modSets)
 Add the co2 budget constraint.
@@ -1026,6 +1078,7 @@ function EmConBudget!(
                )
 end
 
+#80#############################################################################
 function Em0Yr!(m::JuMP.Model, mS::modSets, year::Int64)
     co2OverallYr = m[:co2OverallYr]
     T = mS.T
@@ -1036,6 +1089,7 @@ function Em0Yr!(m::JuMP.Model, mS::modSets, year::Int64)
 
 end
 
+#80#############################################################################
 function gridConUppahBound!(m::JuMP.Model, mS::modSets)
   techToId = Dict()
   techToId["PC"] = 0
