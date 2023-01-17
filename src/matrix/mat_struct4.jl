@@ -5,48 +5,29 @@
 #############################################################################
 
 
-#inputExcel_cap_mat = 
-#"/Users/dthierry/Projects/mid-s/data/cap_mw.xlsx"
+# created @dthierry 2022
+# log:
+# 1-17-23 added some comments
 
-#inputExcel = 
-#"/Users/dthierry/Projects/plantsAnl/data/Util_Master_Input_File.xlsx"
-
-# Age - 1, 2, 3, ....
-# We can have parameters as function of the year, age
-
-# What are the inputs?
-
-# Things that come in array form with time/age dimension and tech.
-# capital cost
-# fixed o and m
-# variable o and m
-# fuel_mat
-# capacity factor
-# heat rate old
-# heat rate new
-# cost of electricty
-# cost of decomission
-# demand matrix
-# market share
-# wind ratio
-
-# array form only as function of tech
-# service life
-# carbon intensity
-#
 using XLSX
 
+"""
+    timeAttr(inputFile::String)
+Initializes the time dependent attributes of the model.
+inputFile must be the name of the input excel file.
+"""
 mutable struct timeAttr
-    #: initial capacity
+    # initial capacity
     initCap::Array{Float64, 2} #: MW
-    #: demand
+    # demand
     nachF::Array{Float64, 2} #: MWh
-    #: capacity Factor
-    cFac::Array{Float64, 2}
-    #: heat rate(s)
+    # capacity factor
+    cFac::Array{Float64, 2} #: capacity Factor
+    # heat rate(s)
     heatRw::Array{Float64, 2} #: BTu/kWh
     heatRx::Array{Float64, 2} #: BTu/kWh
     heatRwAvg::Vector{Float64}
+    # constructor
     function timeAttr(inputFile::String)
         XLSX.openxlsx(inputFile, mode="r") do xf
             # set sheet
@@ -77,6 +58,11 @@ mutable struct timeAttr
     end
 end
 
+"""
+    costAttr(inputFile::String)
+Initializes the cost attributes of the model. 
+inputFile must be the name of the input excel file.
+"""
 mutable struct costAttr
     #: the Kapital
     capC::Array{Float64, 2} #: $/kW
@@ -90,6 +76,7 @@ mutable struct costAttr
     fuelC::Array{Float64, 2}
     #: Decomission (time invariant)
     decomC::Array{Float64, 2}  #: $/MW
+    # Constructor
     function costAttr(inputFile::String)
         XLSX.openxlsx(inputFile, mode="r") do xf
             sR = xf["reference"]
@@ -113,6 +100,11 @@ mutable struct costAttr
     end
 end
 
+"""
+    invrAttr(inputFile::String)
+Initialize the time invariant attributes of the model.
+inputFile must be the name of the input excel file.
+"""
 mutable struct invrAttr
     servLife::Vector{Int64} #: yr
     carbInt::Array{Float64} #: kgCO2/MMBTU
@@ -133,6 +125,7 @@ mutable struct invrAttr
     heatIncR::Float64
     #: Loan period 
     loanP::Int64
+    # Constructor
     function invrAttr(inputFile::String)
         XLSX.openxlsx(inputFile, mode="r") do xf
             sR = xf["reference"]
@@ -171,6 +164,13 @@ mutable struct invrAttr
 end
 
 # we keep the rf function but the fallback goes to the matrix
+"""
+    absForm(inputFile::String)
+Abstract asset modifier.
+inputFile: must be the name of the input excel file.
+kRef: reference cell for the kinds
+m9Ref: reference cell for the 9999 matrix
+"""
 struct absForm
     delay
     servLinc
@@ -192,6 +192,7 @@ struct absForm
     ccHrRedBool
     ccHrRedVal
     whatev 
+    # constructor
     function absForm(inputFile::String, kRef::String, m9Ref::String)
         mCc = Dict((0,0)=>-9999e0)
         mFc = Dict((0,0)=>-9999e0)
@@ -281,9 +282,15 @@ struct absForm
 end
 
 
+"""
+    miscParam(inputFile::String)
+Miscellaneous parameters.
+inputFile must be the name of the input excel file.
+"""
 struct miscParam
     genScale::Float64
     hrToEff::Float64 # heat rate to efficiency factor
+    # constructor
     function miscParam(inputFile::String)
         XLSX.openxlsx(inputFile, mode="r") do xf
             sheet = xf["reference"]
