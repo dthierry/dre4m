@@ -6,13 +6,11 @@
 #############################################################################
 
 module raids
-  include("./bark/bark.jl")
-  include("./matrix/mat_struct4.jl")
+  include("./matrix/mat_struct.jl")
   include("./gestalt/props.jl")
-  include("./gestalt/modKern2.jl")
-  include("./pre/preprocess.jl")
-  include("./coef/coef_custom3.jl")
-  include("./mods/m4-82.jl")
+  include("./gestalt/modKern.jl")
+  include("./coef/coef_custom.jl")
+  include("./mods/model.jl")
   include("./post/postprocess2.jl")
   version = VersionNumber(0, 4, 6)
   @info "RAIDS $(version) by DT@2022"

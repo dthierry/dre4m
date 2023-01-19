@@ -1,21 +1,168 @@
-# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80
-#############################################################################
-#  Copyright 2022, David Thierry, and contributors
-#  This Source Code Form is subject to the terms of the MIT
-#  License.
-#############################################################################
+################################################################################
+#                    Copyright 2022, UChicago LLC. Argonne                     #
+#       This Source Code form is subject to the terms of the MIT license.      #
+################################################################################
+# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
+ 
+# created @dthierry 2022
+# log:
+# 1-18-23 added some comments
 
+# Capital
+
+"""
+    devCapCost(mD, baseKind, kind, time, form)
+
+Returns capital cost coefficient for developments, either new capacity "X" or
+retrofit "R"
+
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+- `kind::Int64`: kind of the child tech
+- `time::Int64`: time
+- `form::String`: form, either `R` for rf or `X` for new
+"""
+function devCapCost(mD::modData, 
+        baseKind::Int64, 
+        kind::Int64, 
+        time::Int64, 
+        form::String) #: M$/GW
+    cA = mD.ca
+    iA = mD.ia
+    discount = 1/((1.e0 +iA.discountR)^time) #: discount factor
+    #: check the form
+    if form == "R"
+        f = mD.rtf #: retrofit
+    elseif form == "X"
+        f = mD.nwf
+    end
+    m = f.mCc[(baseKind, kind)]
+    b = f.bCc[(baseKind, kind)]
+    (multiplier, baseFuel) = ("error", baseKind)
+    if m >= 0
+        multiplier = m
+    end
+    if b >= 0
+        baseFuel = b
+    end
+    capCost = multiplier*cA.capC[baseKind+1, time+1]*discount
+    return capCost
+end
+
+"""
+    devFixCost(mD, baseKind, kind, time, form)
+
+Returns fixed cost coefficient for developments, either new capacity "X" or
+retrofit "R"
+
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+- `kind::Int64`: kind of the child tech
+- `time::Int64`: time
+- `form::String`: form, either `R` for rf or `X` for new
+
+"""
+function devFixCost(mD::modData, 
+        baseKind::Int64, 
+        kind::Int64, 
+        time::Int64,
+        form::String) #: M$/GW
+    cA = mD.ca
+    iA = mD.ia
+    discount = 1/((1.e0 +iA.discountR)^time) #: discount factor 
+    #: check the form
+    if form == "R"
+        f = mD.rtf #: retrofit
+    elseif form == "X"
+        f = mD.nwf
+    end
+    m = f.mFc[(baseKind, kind)]
+    b = f.bFc[(baseKind, kind)]
+    (multiplier, baseFuel) = ("error", baseKind)
+    if m >= 0
+        multiplier = m
+    end
+    if b >= 0
+        baseFuel = b
+    end
+    fixCost = multiplier*cA.fixC[baseKind+1, time+1]*discount
+    return fixCost
+end
+
+"""
+    devVarCost()
+
+Returns var cost coefficient for developments, either new capacity "X" or
+retrofit "R"
+
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+- `kind::Int64`: kind of the child tech
+- `time::Int64`: time
+- `form::String`: form, either `R` for rf or `X` for new
+"""
+function devVarCost(mD::modData, 
+        baseKind::Int64, 
+        kind::Int64, 
+        time::Int64, 
+        form::String) #: M$/GW
+    cA = mD.ca
+    iA = mD.ia
+    discount = 1/((1.e0 +iA.discountR)^time) #: discount factor 
+    #: check the form
+    if form == "R"
+        f = mD.rtf #: retrofit
+    elseif form == "X"
+        f = mD.nwf
+    end
+    m = f.mVc[(baseKind, kind)]
+    b = f.bVc[(baseKind, kind)]
+    (multiplier, baseFuel) = ("error", baseKind)
+    if m >= 0
+        multiplier = m
+    end
+    if b >= 0
+        baseFuel = b
+    end
+    varCost = multiplier*cA.varC[baseKind+1, time+1]*discount
+    return varCost
+end
 
 # Operation and Maintenance (adjusted)
 # (existing)
+
+"""
+    wFixCost(mD, baseKind, time)
+
+Returns fixed cost coefficient for developments, either new capacity "X" or
+retrofit "R"
+
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+- `time::Int64`: time
+"""
 function wFixCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GW
-    #: Does not divide by the capacity factor
-    #: We could change this with the age as well.
     cA = mD.ca
     iA = mD.ia
     discount = 1/((1.e0 +iA.discountR)^time)
     return cA.fixC[baseKind+1, time+1]*discount
 end
+
+"""
+    wVarCost(mD, baseKind, time)
+
+Returns variable cost coefficient for developments, either new capacity "X" or
+retrofit "R"
+
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+- `time::Int64`: time
+"""
 function wVarCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GWh
   #: Based on generation.
   cA = mD.ca
@@ -24,239 +171,384 @@ function wVarCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GWh
   return cA.varC[baseKind+1, time+1]*discount
 end
 
-function xCapCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GW
-  #: Based on capacity.
-  cA = mD.ca
-  iA = mD.ia
-  discount = 1/((1.e0 +iA.discountR)^time)
-  return cA.capC[baseKind+1, time+1]*discount
-end
-
-function xFixCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GW
-  #: Does not divide by the capacity factor
-  #: We could change this with the age as well.
-  cA = mD.ca
-  iA = mD.ia
-  discount = 1/((1.e0 +iA.discountR)^time)
-  return cA.fixC[baseKind+1, time+1]*discount
-end
-function xVarCost(mD::modData, baseKind::Int64, time::Int64) #: M$/GWh
-  #: Based on generation.
-  cA = mD.ca
-  iA = mD.ia
-  discount = 1/((1.e0 +iA.discountR)^time)
-  return cA.varC[baseKind+1, time+1]*discount
-end
-
-
-#: (retrofit)
-#: Fixed cost
-function zFixCost(mD::modData, 
-                  baseKind::Int64, kind::Int64, time::Int64) 
-  #: M$/GW
-  cA = mD.ca
-  iA = mD.ia
-  rfF = mD.rff
-  discount = 1/((1.e0 +iA.discountR)^time)
-
-  #: evaluate retrofit
-  r = rfF.rFix(baseKind, kind, time)
-  (multiplier, baseFuel) = (1.e0, baseKind)
-  if typeof(r) != nothing
-    (multiplier, baseFuel) = r
-  end
-  #:
-  fixCost = multiplier * cA.fixC[baseFuel+1, time+1]
-  return fixCost*discount
-end
-
-#: (retrofit)
-#: Variable cost
-function zVarCost(mD::modData, 
-                  baseKind::Int64, kind::Int64, time::Int64) 
-  #: M$/GWh
-  cA = mD.ca
-  iA = mD.ia
-  rfF = mD.rff
-  discount = 1/((1.e0 +iA.discountR)^time)
-  
-  #: evaluate retrofit
-  r = rfF.rVar(baseKind, kind, time)
-  (multiplier, baseFuel) = (1.e0, baseKind)
-  if typeof(r) != nothing
-    (multiplier, baseFuel) = r
-  end
-  #:
-
-  varCost = multiplier * cA.varC[baseFuel+1, time+1]
-  return varCost*discount
-end
-
-#: (retrofit)
-# retrofit overnight capital cost (M$/GW)
-function zCapCost(mD::modData, 
-                  baseKind::Int64, kind::Int64, time::Int64) 
-  #: M$/GW
-  cA = mD.ca
-  iA = mD.ia
-  rfF = mD.rff
-  #discount = discount already comes from source
-  #: evaluate retrofit
-  r = rfF.rCap(baseKind, kind, time)
-  (multiplier, baseFuel) = (1.e0, baseKind)
-  if typeof(r) != nothing
-    (multiplier, baseFuel) = r
-  end
-  #:
-
-  capCost = multiplier * xCapCost(mD, baseKind, time)
-
-  return capCost
-end
-
 """
-    retCostW(mD::modData, kind::Int64, time::Int64, age::Int64)
+    retCost(mD::modData, kind::Int64, time::Int64, age::Int64)
 Cost of retirement.
+
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+- `time::Int64`: time
+- `age0::Int64`: initial age
+- `tag::String`: either `X`, i.e. new, or `R`, i.e. rf
 """
-function retCostW(mD::modData, kind::Int64, time::Int64, age::Int64) 
-  #: M$/GW
-  cA = mD.ca
-  iA = mD.ia
-  discount = 1/((1.e0 +iA.discountR)^time)
-  # baseAge = time - age > 0 ? time - age: 0.
-  baseAge = max(time - age, 0)
-  #: Loan liability
-  loanFrac = max(iA.loanP - age, 0)/iA.loanP
-  loanLiability = loanFrac*cA.capC[kind+1, baseAge+1] * discount
-  #: Decomission
-  decom = cA.decomC[kind+1] * discount
-  #:
-  return loanLiability + decom # lostRev*365*24
+function retCost(mD::modData, baseKind::Int64, kind::Int64, 
+        time::Int64, age0::Int64; tag::String="") 
+    #: M$/GW
+    cA = mD.ca
+    iA = mD.ia
+    discount = 1/((1.e0 +iA.discountR)^time)
+  
+    #: old & retrof will have base age of (earliest), 
+    # otw the year of creation for new cap
+    #: for old + retro set base age to 0
+    baseAge = 0
+    currentAge = time + age0
+    if tag == "X"
+        baseAge = age0
+        currentAge = time - age0
+        if currentAge < 0
+            throw(DomainError(time-age0, "argument must be nonnegative"))
+        end
+    end
+    #: Loan liability
+    loanFrac = max(iA.loanP - currentAge, 0)/iA.loanP
+  
+    #: just in case we go above for new plants
+    maxYr = size(cA.capC)[2]
+    if baseAge > maxYr-1
+        baseAge = maxYr-1
+    end
+  
+    #: Capital cost
+    if tag == "R"
+        m = mD.rtf.mCc[(baseKind, kind)]#: retrofit
+        m = m < 1. ? m + 1. : m  #: it has to be at least 1.
+    elseif tag == "X"
+        m = mD.nwf.mCc[(baseKind, kind)]#: retrofit
+    else
+        m = 1.0
+    end
+    
+    multiplier = "error"
+  
+    if m >= 0
+        multiplier = m
+    end
+  
+    capCost = multiplier*cA.capC[baseKind+1, baseAge+1]
+  
+    loanLiability = loanFrac*capCost*discount
+    return loanLiability # + decom # lostRev*365*24
 end
 
-function saleLost(mD::modData, kind::Int64, time::Int64, age::Int64) 
+#
+#
+"""
+    saleLost(mD::modData, kind::Int64, time::Int64, age0::Int64, tag::String)
+The lost sales.
+
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+- `time::Int64`: time
+- `age0::Int64`: initial age
+- `tag::String`: either `X`, i.e. new, or `R`, i.e. rf
+"""
+function saleLost(mD::modData, kind::Int64, time::Int64, age0::Int64;
+        tag::String="") 
   #: M$/GWh
   cA = mD.ca
   iA = mD.ia
-  discount = 1/((1.e0 +iA.discountR)^time)
-  effSrvLf = max(iA.servLife[kind+1] - age, 0)
-  #: we need the corresponding capacity factor afterwrds
+  discount = 1/((1.e0+iA.discountR)^time)
+  currentAge = time + age0
+  if tag == "X"
+      currentAge = time - age0
+      if currentAge < 0
+          throw(DomainError(time-age0, "argument must be nonnegative"))
+      end
+  end
+
+  effSrvLf = max(iA.servLife[kind+1] - currentAge, 0)
   lostRev = effSrvLf*cA.elecSaleC[time+1] * discount
   return lostRev
 end
 
+"""
+    wHeatRate()
+Heat rate coefficient.
+This reflects the initial age, i.e age0
 
+# Arguments
+- `mD::modData`: model data structure
+- `kind::Int64`: kind of the parent tech
+- `age0::Int64`: initial age
+- `time::Int64`: time
+"""
 #: existing plant heat rate, (hr0) * (1+increase) ^ time
-function heatRateW(mD::modData, kind::Int64, age::Int64, 
-        time::Int64, maxBase::Int64)
+function wHeatRate(mD::modData, 
+        kind::Int64, 
+        age0::Int64, 
+        time::Int64)
     tA = mD.ta
     iA = mD.ia
-    if age < time # this case does not exists
-        return 0
-    else
-        baseAge = age - time
-        baseAge = min(maxBase, baseAge)
-        return tA.heatRw[kind+1, baseAge+1]*(1.e0+iA.heatIncR)^time
-    end
+    # baseAge = min(maxBase, baseAge)
+    #hRate0 = tA.heatRwAvg[kind+1] ## testing
+    hRate0 = tA.heatRw[kind+1, age0+1]
+    return hRate0*(1.e0+iA.heatIncR)^time
 end
 
 #: (retrofit)
 #: HeatRate
-function heatRateZ(mD::modData, baseKind::Int64, kind::Int64, 
-                   age::Int64, time::Int64, maxBase::Int64)
-  tA = mD.ta
-  iA = mD.ia
-  rfF = mD.rff
-  if age < time # this case does not exists
-    return 0
-  else
+"""
+    zHeatRate()
+Heat rate coefficient for retrofitted assets.
+This reflects the initial age, i.e age0
+
+# Arguments
+- `mD::modData`: model data structure
+- `kind::Int64`: kind of the parent tech
+- `age0::Int64`: initial age
+- `time::Int64`: time
+"""
+function zHeatRate(mD::modData, 
+        baseKind::Int64, 
+        kind::Int64, 
+        age0::Int64, 
+        time::Int64)
+    tA = mD.ta
+    iA = mD.ia
+    rtf = mD.rtf
     #: evaluate retrofit
-    r = rfF.rHtr(baseKind, kind, time)
-    (multiplier, baseFuel) = (1.e0, baseKind)
-    if typeof(r) != nothing
-      (multiplier, baseFuel) = r
+    #:
+    m = rtf.mHr[(baseKind, kind)]
+    b = rtf.bHr[(baseKind, kind)]
+    (multiplier, baseFuel) = ("error", baseKind)
+    if m >= 0
+        multiplier = m
+    end
+    if b >= 0
+        baseFuel = b
+    end
+    maxYr = size(tA.heatRx)[2]
+    ageX = age0
+    if age0 > maxYr-1
+        ageX = maxYr-1
+    end
+    # use new heat rate as reference
+    hr0 = tA.heatRx[baseFuel+1, ageX+1]
+    if rtf.ubhr[baseKind, kind] # but, if true use the base heat rate.
+        hr0 = tA.heatRw[baseFuel+1, age0+1]
+        hr0 = hr0 <= 1e-06 ? tA.heatRwAvg[baseFuel+1] : hr0
+    end
+    if rtf.ccHrRedBool[baseKind, kind]
+        multiplier = 1.0 # override
+        hrToEff = mD.misc.hrToEff # scale factor
+        eff = 1/(hr0*hrToEff)
+        reduction = rtf.ccHrRedVal[baseKind, kind] # eff points
+        eff -= reduction/100.
+        if eff <= 0.e0
+            println("efficiency for this RF is less than zero")
+            println("base $(baseKind) kind $(kind)")
+            #throw(error())
+        else
+            hr0 = 1/eff
+            hr0 /= hrToEff #rescale back
+        end
+    end
+    heatIncr = (1.e0+iA.heatIncR)^time
+    return multiplier*hr0*heatIncr
+end
+
+
+"""
+    xHeatRate(mD::modData, baseKind::Int64, kind::Int64, 
+    age0::Int64, time::Int64)
+Heat rate coefficient for new plants.
+This reflects the initial age, i.e age0
+
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+- `kind::Int64`: child kind 
+- `time::Int64`: time
+"""
+function xHeatRate(mD::modData, baseKind::Int64, kind::Int64, 
+        age0::Int64, time::Int64)
+    tA = mD.ta
+    iA = mD.ia
+    nwf = mD.nwf
+
+    m = nwf.mHr[(baseKind, kind)]
+    b = nwf.bHr[(baseKind, kind)]
+    (multiplier, baseFuel) = ("error", baseKind)
+    if m >= 0
+        multiplier = m
+    end
+    if b >= 0
+        baseFuel = b
+    end
+    maxYr = size(tA.heatRx)[2]
+    if age0 > maxYr-1
+        age0 = maxYr-1
+    end
+    heatIncr = (1.e0+iA.heatIncR)^time
+    return multiplier*tA.heatRx[baseFuel+1, age0+1]*heatIncr
+end
+
+#: (retrofit)
+#: Carbon instance
+"""
+    wCarbonInt(mD::modData, baseKind::Int64)
+Carbon intensity for existing plants.
+This reflects the initial age, i.e age0
+
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+"""
+function wCarbonInt(mD::modData, baseKind::Int64)
+    iA = mD.ia
+    #:
+    baseFuel = baseKind
+    return iA.carbInt[baseFuel+1]
+end
+
+#: (retrofit)
+#: Carbon instance
+"""
+    devCarbonInt(mD::modData, baseKind::Int64, kind::Int64, form::String)
+Carbon intensity for developments, i.e. rf or new.
+This reflects the initial age, i.e age0
+
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+"""
+function devCarbonInt(mD::modData, 
+        baseKind::Int64, 
+        kind::Int64, 
+        form::String)
+    iA = mD.ia
+    if form == "R"
+        f = mD.rtf
+    elseif form == "X"
+        f = mD.nwf
     end
     #:
-    #? fuelKind
-    baseAge = age - time
-    baseAge = min(maxBase, baseAge)
-    heatrate = (tA.heatRw[baseFuel+1, baseAge+1]*(1.e0 +iA.heatIncR)^time)
-      return heatrate * multiplier
-  end
-end
-##
-
-function heatRateX(mD::modData, baseKind::Int64, kind::Int64, 
-                   age::Int64, time::Int64)
-  tA = mD.ta
-  iA = mD.ia
-  xDelay = mD.f.xDelay
-  if time < age
-    return 0
-  end
-  baseTime = time - age # simple as.
-  baseTime = max(baseTime, 0) 
-  #but actually if it's less than 0 just take 0
-  return tA.heatRx[baseKind+1, baseTime+1]*(1.e0+iA.heatIncR)^time
-end
-
-#: (retrofit)
-#: Carbon instance
-function carbonIntW(mD::modData, baseKind::Int64, kind::Int64=-1)
-  tA = mD.ta
-  iA = mD.ia
-  (multiplier, baseFuel) = (1.e0, baseKind)
-  #:
-  return iA.carbInt[baseFuel+1] * multiplier
+    m = f.mEm[(baseKind, kind)]
+    b = f.bEm[(baseKind, kind)]
+    (multiplier, baseFuel) = ("error", baseKind)
+    if m >= 0
+        multiplier = m
+    end
+    if b >= 0
+        baseFuel = b
+    end
+    return iA.carbInt[baseFuel+1] * multiplier
 end
 
 #: fuel costs only include those techs that are based in fuel burning
-function fuelCostW(mD::modData, baseKind::Int64, 
-                   time::Int64, kind::Int64=-1)
-  tA = mD.ta
-  cA = mD.ca
-  iA = mD.ia
-  discount = 1/((1.e0 +iA.discountR)^time)
-  (multiplier, baseFuel) = (1.e0, baseKind)
-  return cA.fuelC[baseFuel+1, time+1]*discount 
-end
+"""
+    wFuelCost(mD::modData, baseKind::Int64, kind::Int64, form::String)
+Fuel costs for existing plants.
 
-
-#: (retrofit)
-#: Carbon instance
-function carbonIntZ(mD::modData, 
-                    baseKind::Int64, kind::Int64=-1)
-  tA = mD.ta
-  iA = mD.ia
-  rfF = mD.rff
-
-  #: evaluate retrofit
-  r = rfF.rCo(baseKind, kind, time)
-  (multiplier, baseFuel) = (1.e0, baseKind)
-  if typeof(r) != nothing
-    (multiplier, baseFuel) = r
-  end
-  #:
-  return iA.carbInt[baseFuel+1] * multiplier
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+- `time::Int64`: time 
+"""
+function wFuelCost(mD::modData, baseKind::Int64, 
+        time::Int64)
+    cA = mD.ca
+    iA = mD.ia
+    discount = 1/((1.e0+iA.discountR)^time)
+    baseFuel = baseKind
+    return cA.fuelC[baseFuel+1, time+1]*discount 
 end
 
 #: fuel costs only include those techs that are based in fuel burning
-function fuelCostZ(mD::modData, 
-                   baseKind::Int64, time::Int64, kind::Int64=-1)
-  tA = mD.ta
-  cA = mD.ca
-  iA = mD.ia
-  rfF = mD.rff
+"""
+    devFuelCost(mD::modData, baseKind::Int64, kind::Int64, form::String)
+Fuel costs for existing plants.
 
-  discount = 1/((1.e0 +iA.discountR)^time)
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+- `kind::Int64`: technology kind 
+- `time::Int64`: time 
+- `form::Int64`: form, either "R" for rf or "X" for new
+"""
+function devFuelCost(mD::modData, 
+                   baseKind::Int64, 
+                   kind::Int64,
+                   time::Int64, form::String)
+    tA = mD.ta
+    cA = mD.ca
+    iA = mD.ia
+    if form == "R"
+        f = mD.rtf
+    elseif form == "X"
+        f = mD.nwf
+    end
+    discount = 1/((1.e0 +iA.discountR)^time)
+    #: evaluate retrofit
+    m = f.mFu[(baseKind, kind)]
+    b = f.bFu[(baseKind, kind)]
+    (multiplier, baseFuel) = ("error", baseKind)
+    if m >= 0
+        multiplier = m
+    end
+    if b >= 0
+        baseFuel = b
+    end
+    #:
+    return multiplier*cA.fuelC[baseFuel+1, time+1]*discount 
+end
 
-  #: evaluate retrofit
-  r = rfF.rFuel(baseKind, kind, time)
-  (multiplier, baseFuel) = (1.e0, baseKind)
-  if typeof(r) != nothing
-    (multiplier, baseFuel) = r
-  end
-  #:
-  return cA.fuelC[baseFuel+1, time+1]*discount 
+
+
+"""
+    devDerating(mD::modData, baseKind::Int64, kind::Int64, form::String)
+Fuel costs for existing plants.
+
+# Arguments
+- `mD::modData`: model data structure
+- `baseKind::Int64`: kind of the parent tech
+- `kind::Int64`: technology kind 
+- `time::Int64`: time 
+- `form::Int64`: form, either "R" for rf or "X" for new
+"""
+function devDerating(mD::modData, 
+                   baseKind::Int64, 
+                   kind::Int64,
+                   age0::Int64,
+                   time::Int64, form::String)
+    tA = mD.ta
+    cA = mD.ca
+    iA = mD.ia
+    rtf = mD.rtf
+    if form == "R"
+        f = mD.rtf
+    elseif form == "X"
+        f = mD.nwf
+    end
+    #: evaluate retrofit
+    multiplier = 1.e0
+
+    if rtf.ccHrRedBool[baseKind, kind]
+        hr0 = tA.heatRw[baseKind+1, age0+1]
+        hrToEff = mD.misc.hrToEff # scale factor
+        # convert to hr->eff
+        eff = 1/(hr0*hrToEff)
+        deltaEta = rtf.ccHrRedVal[baseKind, kind] # eff points
+        deltaEta /= 100e0
+        if eff <= 0.e0
+            println("efficiency for this RF is less than zero (DERATING)")
+            println("base $(baseKind) kind $(kind)")
+            #throw(error())
+        else
+            multiplier = 1.0-(deltaEta/eff)
+            println("multiplier $(multiplier)::$(baseKind)-$(kind)")
+            if !(0e0<=multiplier<=1e0)
+                println("check values!")
+                println("$(hr0) $(eff) $(deltaEta) $(multiplier)")
+                #throw(error())
+                multiplier = 1e-08 # make no power
+            end
+        end
+    end
+    #:
+    return multiplier 
 end
 
