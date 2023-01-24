@@ -1,9 +1,13 @@
+################################################################################
+#                    Copyright 2022, UChicago LLC. Argonne                     #
+#       This Source Code form is subject to the terms of the MIT license.      #
+################################################################################
 # vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
-#############################################################################
-#  Copyright 2022, David Thierry, and contributors
-#  This Source Code Form is subject to the terms of the MIT
-#  License.
-#############################################################################
+
+# created @dthierry 2022
+# log:
+# x-xx-xx implement changes of how age is considered
+# 1-17-23 added some comments
 
 techToId = Dict()
 techToId["PC"] = 0
