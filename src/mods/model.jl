@@ -112,8 +112,6 @@ function genModel(mS::modSets,
                    j = 0:T; t>=(j+xDelay[i, k])]
               >= 0e0
              )
-    #: made a ficticious point Nx so we can know how much is retired because it
-    #: becomes too old
     
 
     ## new assets allocations
@@ -127,7 +125,6 @@ function genModel(mS::modSets,
                     j = 0:T;
                     t >= (j+xDelay[i, k])]
               >= 0)
-    #: can't retire at j = 0
 
     ##  rf asset
     @variable(m,
@@ -135,15 +132,6 @@ function genModel(mS::modSets,
                 j=0:N[i]-1;
                 t >= zDelay[i, k]]
               >= 0)
-    #: we have to recognize the fact that no retrofit tally can be kept at
-    #: any point in time that is between 0 and the zDelay amount.
-
-    #: the retrofit can't happen at the end of life of a plant, i.e., 
-    #: j goes from 0 to N[i]-12
-    #: the retrofit can't happen at the beginning of life of a plant, 
-    #: i.e. j = 0
-    #: made a ficticious point Nxj so we can know how much is retired because 
-    #: it becomes too old
 
     ##  rf asset transition
     @variable(m,
@@ -157,9 +145,6 @@ function genModel(mS::modSets,
               uz[t = 0:T, i = 0:I-1, k = 0:Kz[i]-1,
                  j = 0:N[i]-1; t >= zDelay[i,k]]
               >= 0)
-    # can't retire at the first year of retrofit, jk = 0
-    # can't retire at the last year of retrofit, i.e. jk = |Nxj|
-    #: no retirements at the last age (n-1), therefore only goes to n-2
     
     # Effective capacity
     ## Effective capacity old
@@ -176,9 +161,6 @@ function genModel(mS::modSets,
                 j=0:T-1]
              )
 
-    #: hey let's just create effective generation variables instead
-    #: it seems that the capacity factors are the same regardless of
-    #: us having retrofits, new capacity, etc.
     # Generation variables
     ## generation existing
     @variable(m,
@@ -197,19 +179,23 @@ function genModel(mS::modSets,
               Xgen[t=0:T-1, i=0:I-1, k=0:Kx[i]-1,
                    j=0:T-1])
 
-    #: Generation (GWh)
+    ## overall generation
     @variable(m, sGen[t = 1:T-1, i = 0:I-1]) #: supply generated
     
 
+    # Heat variables
+    ## heat req. existing
     @variable(m, 
               heat_w[t = 0:T-1, i=0:I-1,
                         j = 0:N[i]-1; fuelBased[i+1]])
 
+    ## heat req. retrofit 
     @variable(m,
               heat_z[t=0:T-1,
                      i=0:I-1, k=0:Kz[i]-1,
                      j=0:N[i]-1; fuelBased[i+1]])
 
+    ## heat req. new 
     @variable(m,
               heat_x[t=0:T-1,
                      i=0:I-1, k=0:Kx[i]-1,
