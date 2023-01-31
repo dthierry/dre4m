@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ################################################################################
 #                    Copyright 2022, UChicago LLC. Argonne                     #
 #       This Source Code form is subject to the terms of the MIT license.      #
@@ -17,9 +18,8 @@ import sys
 import pandas as pd
 from typing import Tuple
 from generalD import *
+
 __author__ = "David Thierry"
-
-
 
 def loadExcelOveralls(shift: bool=False) -> Tuple[dict, float]:
     """read the aggregates of the _effective.xlsx file, which is generated from
@@ -66,5 +66,4 @@ def loadExcelOveralls(shift: bool=False) -> Tuple[dict, float]:
                 continue
             l[name] = l[name].shift(fill_value=0) #: shift by one
     return l, dmax
-
 

@@ -1,5 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+################################################################################
+#                    Copyright 2022, UChicago LLC. Argonne                     #
+#       This Source Code form is subject to the terms of the MIT license.      #
+################################################################################
+# vim: expandtab colorcolumn=80 tw=80
+
+# created @dthierry 2022
+# description: This file creates a nice summary of all the excel files from a
+# given case study
+#
+# log:
+# 1-31-23 added some comments
+#
+#
+#80#############################################################################
 
 import pandas as pd
 import os, sys
@@ -10,12 +25,16 @@ import os, sys
 # Within each folder there should be a _stats.xlsx file
 
 def getCurFold(path: str = ".") -> list:
+    """Gets the current folder path.
+    """
     result = []
     for _, dirs, _ in os.walk(path):
         break
     return sorted(dirs)
 
 def get_folders(directory) -> dict:
+    """Gets all the folders in the current directory.
+    """
     fulladdress = []
     d = []
     dirs = os.listdir(directory)
@@ -43,6 +62,8 @@ def get_folders(directory) -> dict:
 
 
 def coalesce():
+    """Read the excel files contents and get the summary file.
+    """
     # A file can be "cb", "bau", "c350", and "c500"
     #
     folders = getCurFold()
@@ -100,3 +121,4 @@ def coalesce():
 
 if __name__ == "__main__":
     coalesce()
+

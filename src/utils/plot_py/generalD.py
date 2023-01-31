@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ################################################################################
 #                    Copyright 2022, UChicago LLC. Argonne                     #
 #       This Source Code form is subject to the terms of the MIT license.      #
@@ -118,3 +119,4 @@ def export_legend(legend, filename="legend.png"):
         fig.dpi_scale_trans.inverted()
     )
     fig.savefig(filename, dpi=300, bbox_inches=bbox)
+

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 ################################################################################
 #                    Copyright 2022, UChicago LLC. Argonne                     #
 #       This Source Code form is subject to the terms of the MIT license.      #
@@ -22,6 +23,8 @@ from matplotlib.cm import ScalarMappable as smb
 from matplotlib.colors import ListedColormap
 from generalD import *
 
+
+__author__ = "David Thierry"
 
 plt.rcParams['hatch.linewidth'] = 0.2
 colour_map = "tab20c"

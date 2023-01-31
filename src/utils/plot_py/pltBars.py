@@ -1,4 +1,20 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+################################################################################
+#                    Copyright 2022, UChicago LLC. Argonne                     #
+#       This Source Code form is subject to the terms of the MIT license.      #
+################################################################################
+# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
+
+# created @dthierry 2022
+# description: generate the plots with the bars (and stacked) for the capacity.
+#
+# log:
+# 1-31-23 added some comments
+#
+#
+#80#############################################################################
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -16,7 +32,7 @@ plt.rcParams.update({
 })
 
 
-
+# some global identifiers
 suffix = {}
 suffix["w"] = ""
 # suffix["z"] = "Retro."
@@ -29,6 +45,8 @@ suffix["ux"] = "Ret. new"
 (kinds_z, kinds_x) = loadKinds()
 
 def export_legend(legend, filename="legend.png"):
+    """Puts the legend in a different png file
+    """
     fig  = legend.figure
     fig.canvas.draw()
     bbox  = legend.get_window_extent().transformed(
@@ -37,9 +55,10 @@ def export_legend(legend, filename="legend.png"):
     fig.savefig(filename, dpi=300, bbox_inches=bbox)
 
 def stacksSingle(l: list, dmax: float) -> None:
-    """ Generates a single stacked plot for every name """
+    """Generates a single stacked plot for every name
+    """
     n = len(l["w"].columns)
-    cmap = plt.get_cmap(CMAP0)
+    cmap = plt.get_cmap(CMAP0) #: colour map
     norm = nrm(vmin=0, vmax=I*min(1, max(kinds_z)))
     for name in names:
         df = l[name]
@@ -64,12 +83,15 @@ def stacksSingle(l: list, dmax: float) -> None:
         excelFileName = getFiles("*_effective.xlsx")
         efn = excelFileName.split(".")[1].replace("/", "")
         f.savefig(name + "_" + efn + "_SingleStack" + ".png", format="png")
-        legend = a.legend(loc=0)
+        legend = a.legend(loc=0) #: get the legend and export the legend
         export_legend(legend,
                 "legend_" + name + "_" + efn + "_SingleStack" + ".png")
 
 
 def allStacked(l: dict, dmax: float) -> None:
+    """Creates a `stacked` plot using the capacity dataframes. This includes
+    all kinds of assets, i.e. existing, retrofitted, and new.
+    """
     all_columns = []
     all_colours = []
     all_labels = []
@@ -95,11 +117,13 @@ def allStacked(l: dict, dmax: float) -> None:
         all_columns += [df[col] for col in df.columns]
         if name == "w":  # split the name into just "number, "
             nameSplits = [col.split("_")[1] for col in df.columns]
-            all_labels += [tName[int(nameS)] + " " + suffix[name] for nameS in nameSplits]
+            all_labels += [tName[int(nameS)] + " " + suffix[name] for nameS in
+                           nameSplits]
             all_hatches += ["" for nameS in nameSplits]
         else:  # split it into "number, subnumber"
             nameSplits = [col.split("_")[1:] for col in df.columns]
-            all_labels += [tName[int(nameS[0])] + " " + nameS[1] + " " + suffix[name] for nameS in nameSplits]
+            all_labels += [tName[int(nameS[0])] + " " + nameS[1] + " " +
+                           suffix[name] for nameS in nameSplits]
             hatch = "/" if name == "z" else ".."
             all_hatches += [hatch*(int(nameS[1]) + 1) for nameS in nameSplits]
         colourVal = [int(col.split("_")[1]) for col in df.columns]
@@ -136,6 +160,8 @@ def allStacked(l: dict, dmax: float) -> None:
     a.set_xlabel("Year")
     a.set_ylabel("GW")
     a.set_xlim(2020, 2050)
+    #: we could have demand but this is capacity not generation.
+
     #ax.set_ylim([0, dmax])
     #a.plot(l["demand"].index + 2015,
     #        l["demand"]["demand"], "--",
@@ -189,7 +215,8 @@ def allStacked(l: dict, dmax: float) -> None:
               bbox_inches="tight")
 
 def sBars(l: list) -> None:
-    """ Generates a single bar stacked plot for every name """
+    """Generates a single bar stacked plot for every name
+    """
     n = len(l["w"].columns)
     cmap = plt.get_cmap(CMAP0)
 
@@ -301,6 +328,9 @@ def sBars(l: list) -> None:
             "legend_" + name + "_" + efn + "_sBarSingle" + ".png")
 
 def GetEmLine():
+    """Return a pandas dataframe that has the emission line.
+    This looks for the *_em.xlsx file.
+    """
     lenFuelBased = 0
     name1 = []
     for name in namesW:
@@ -347,5 +377,4 @@ def main():
 if __name__ == "__main__":
     # l, dmax = main()
     main()
-
 

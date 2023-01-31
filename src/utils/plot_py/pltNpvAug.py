@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 ################################################################################
 #                    Copyright 2022, UChicago LLC. Argonne                     #
 #       This Source Code form is subject to the terms of the MIT license.      #
@@ -20,12 +21,14 @@ import numpy as np
 from generalD import *
 import os, fnmatch
 
-plt.rcParams.update({
+plt.rcParams.update({ #: set the font
     "text.usetex": True,
     "font.family": "serif",
     "font.serif": ["Palatino"],
 })
 
+
+__author__ = "David Thierry"
 
 def whichRetrofit(series) -> bool:
     """Returns a list of booleans based on the tags.

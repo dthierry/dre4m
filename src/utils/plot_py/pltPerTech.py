@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 ################################################################################
 #                    Copyright 2022, UChicago LLC. Argonne                     #
 #       This Source Code form is subject to the terms of the MIT license.      #
@@ -23,6 +24,7 @@ from generalD import *
 
 # the list names comes from generalID
 
+__author__ = "David Thierry"
 plt.rcParams['hatch.linewidth'] = 0.2
 
 # number 1

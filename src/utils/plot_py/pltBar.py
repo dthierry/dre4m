@@ -1,10 +1,28 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#################################################################################
+#                    Copyright 2022, UChicago LLC. Argonne                     #
+#       This Source Code form is subject to the terms of the MIT license.      #
+################################################################################
+# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
+
+# created @dthierry 2022
+# description: generate the plots with the big rectangles.
+#
+# log:
+# 1-31-23 added some comments
+#
+#
+#80#############################################################################
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize as nrm
 from matplotlib.cm import ScalarMappable as smb
 import sys, getopt
+
+__author__ = "David Thierry"
 
 plt.rcParams.update({
     "text.usetex": True,
@@ -14,6 +32,9 @@ plt.rcParams.update({
 
 
 def main(argv):
+    """generate the whole plot. This file needs command line arguments:
+    `-i xxxx`
+    """
     file = ""
     try:
         opts, args = getopt.getopt(argv, "hi:o:", ["ifile="])
@@ -33,64 +54,67 @@ def main(argv):
     cmap = plt.get_cmap("Greens")
     norm = nrm(vmin=0.0, vmax=1.)
 
-    #file = "Wed220504-011539"
 
     dfCost = pd.read_excel(file + "_ret_rel_t.xlsx")
     dfUret = pd.read_excel(file + "_ret_t_ucap.xlsx")
     dfProc = pd.DataFrame(0., index=[0, 1], columns=dfCost.columns)
     dfProc.iloc[0, :] = dfCost.sum(0)
     dfProc.iloc[1, :] = dfUret.sum(0)
-    f, a = plt.subplots()
-    base = 0.
-    for t in np.linspace(0.1, 1., 10):
-        c = cmap(norm(t))
-        t = round(t, 2)
-        for i in range(dfCost.shape[0]):
-            if dfCost.loc[i, t] < 1e-08:
-                continue
-            a.bar(0, dfCost.loc[i, t],
-                    width=dfUret.loc[i, t],
-                    bottom=base,
-                    align="edge",
-                    color=c,
-                    edgecolor="k",
-                    linewidth=1.,
-                    label=dfCost.loc[i, "t"]
-                    )
-            base += dfCost.loc[i, t]
-    a.set_xlabel("Retired Capacity (GW)")
-    a.set_ylabel("Retired Capacity Cost (Millions \$)")
-    a.legend()
-    f.savefig("myfig.png", format="png")
 
-    f, a = plt.subplots()
-    base = 0.
-    for t in np.linspace(0.1, 1., 10):
-        c = cmap(norm(t))
-        t = round(t, 2)
-        a.bar(0, dfProc.loc[0, t],
-                width=dfProc.loc[1, t],
-                bottom=base,
-                align="edge",
-                color=c,
-                edgecolor="k",
-                linewidth=1.,
-                label=t)
-        base += dfProc.loc[0, t]
-    a.legend(title="Relative retirement time")
-    a.set_xlabel("Capacity (GWh)")
-    a.set_ylabel("Cost (M\$)")
-    f.savefig("myfig2.png", format="png")
+    # f, a = plt.subplots()
+    # base = 0.
+    # for t in np.linspace(0.1, 1., 10):
+    #     c = cmap(norm(t))
+    #     t = round(t, 2)
+    #     for i in range(dfCost.shape[0]):
+    #         if dfCost.loc[i, t] < 1e-08:
+    #             continue
+    #         a.bar(0, dfCost.loc[i, t],
+    #                 width=dfUret.loc[i, t],
+    #                 bottom=base,
+    #                 align="edge",
+    #                 color=c,
+    #                 edgecolor="k",
+    #                 linewidth=1.,
+    #                 label=dfCost.loc[i, "t"]
+    #                 )
+    #         base += dfCost.loc[i, t]
+    # a.set_xlabel("Retired Capacity (GW)")
+    # a.set_ylabel("Retired Capacity Cost (Millions \$)")
+    # a.legend()
+    #f.savefig("myfig.png", format="png")
 
+    # f, a = plt.subplots()
+    # base = 0.
+    # for t in np.linspace(0.1, 1., 10):
+    #     c = cmap(norm(t))
+    #     t = round(t, 2)
+    #     a.bar(0, dfProc.loc[0, t],
+    #             width=dfProc.loc[1, t],
+    #             bottom=base,
+    #             align="edge",
+    #             color=c,
+    #             edgecolor="k",
+    #             linewidth=1.,
+    #             label=t)
+    #     base += dfProc.loc[0, t]
+    # a.legend(title="Relative retirement time")
+    # a.set_xlabel("Capacity (GWh)")
+    # a.set_ylabel("Cost (M\$)")
+    # f.savefig("myfig2.png", format="png")
+
+    #: plot array
     f, a = plt.subplots(nrows=1, ncols=2,
                         sharex="all", sharey="all",
                         constrained_layout=True, dpi=200)
+    #: read some dataframes
     df_xCost = pd.read_excel(file + "_stats.xlsx", sheet_name="cap_cost_new")
     df_xCap = pd.read_excel(file + "_stats.xlsx", sheet_name="new_alloc")
     df_xCost.drop(df_xCost.tail(1).index, inplace=True) # drop the sum bit
     df_xCap.drop(df_xCap.tail(1).index, inplace=True) # drop the sum bit
     xcost = df_xCost.sum(0)[1]
     xcap = df_xCap.sum(0)[1]
+
     print("cost {}".format(xcost), "cap {}".format(xcap))
     base = 0.
     for t in np.linspace(0.1, 1., 10):
@@ -160,18 +184,7 @@ def main(argv):
     f.savefig("blocks_V1.png", format="png")
 
 
-def cmapTest():
-    cmap = plt.get_cmap("Purples")
-    norm = nrm(0., 1.)
-    for t in np.linspace(0.1, 1., 10):
-        c = cmap(norm(t))
-        plt.bar(0, 1, bottom=t, color=c, label=t)
-    plt.legend()
-    plt.show()
-
-
 if __name__ == "__main__":
     main(sys.argv[1:])
-    # cmapTest()
 
 
