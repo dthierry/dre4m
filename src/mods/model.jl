@@ -960,7 +960,7 @@ end
     gridConUppahBound!(m::JuMP.Model, mS::modSets)
 Add upper bound on bio, nuclar and hydro to the model.
 """
-function gridConUppahBound!(m::JuMP.Model, mS::modSets)
+function gridConUpperBound!(m::JuMP.Model, mS::modSets)
     techToId = Dict()
     techToId["PC"] = 0
     techToId["NGCT"] = 1

@@ -292,8 +292,14 @@ end
 #: HeatRate
 """
     zHeatRate()
-Heat rate coefficient for retrofitted assets.
-This reflects the initial age, i.e age0
+Heat rate coefficient for retrofitted assets.  This reflects the initial age,
+i.e age0. Also if ccHrRedBool is true, then there is a penalty on the heat rate,
+calculated as percentage points, and then substracted to the heat rate. 
+
+If the resulting efficiency is less thn zero, we don't have a mechanism to
+correct this, therefore, no changes are made. 
+
+Also see the function: devDerating (used for generation)
 
 # Arguments
 - `mD::modData`: model data structure
@@ -338,9 +344,10 @@ function zHeatRate(mD::modData,
         reduction = rtf.ccHrRedVal[baseKind, kind] # eff points
         eff -= reduction/100.
         if eff <= 0.e0
-            println("efficiency for this RF is less than zero")
-            println("base $(baseKind) kind $(kind)")
+            #print("[WARN] ccs hr eff for this RF less than 0, skip")
+            #print(" b=$(baseKind):k=$(kind)\n")
             #throw(error())
+            #: same as derating error
         else
             hr0 = 1/eff
             hr0 /= hrToEff #rescale back
@@ -500,7 +507,11 @@ end
 
 """
     devDerating(mD::modData, baseKind::Int64, kind::Int64, form::String)
-Fuel costs for existing plants.
+Penalty on the power generation (based on a multiplier). 
+
+This considers the percentage points and directly substract them to the 100%
+that otherwise would be produced. 
+
 
 # Arguments
 - `mD::modData`: model data structure
@@ -534,16 +545,19 @@ function devDerating(mD::modData,
         deltaEta = rtf.ccHrRedVal[baseKind, kind] # eff points
         deltaEta /= 100e0
         if eff <= 0.e0
-            println("efficiency for this RF is less than zero (DERATING)")
-            println("base $(baseKind) kind $(kind)")
+            print("[WARN](DERATING) this is leading to less than zero\
+                  multiplier, setting multiplier to 1\t")
+            print("\tbase $(baseKind) kind $(kind)\n")
             #throw(error())
         else
             multiplier = 1.0-(deltaEta/eff)
-            println("multiplier $(multiplier)::$(baseKind)-$(kind)")
+            #println("multiplier $(multiplier)::$(baseKind)-$(kind)")
             if !(0e0<=multiplier<=1e0)
-                println("check values!")
-                println("$(hr0) $(eff) $(deltaEta) $(multiplier)")
+                #print("check values!\t")
+                #print("base=$(baseKind), kind=$(kind)\
+                #      $(hr0) $(eff) $(deltaEta) $(multiplier)\n")
                 #throw(error())
+                println("[WARN] skip derating for b=$(baseKind):k=$(kind)")
                 multiplier = 1e-08 # make no power
             end
         end
