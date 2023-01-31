@@ -1,3 +1,18 @@
+#!/usr/bin/env python
+################################################################################
+#                    Copyright 2022, UChicago LLC. Argonne                     #
+#       This Source Code form is subject to the terms of the MIT license.      #
+################################################################################
+# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
+
+# created @dthierry 2022
+# description: Generate plots of the results from the capacities.
+#
+# log:
+# 1-30-23 added some comments
+#
+#
+#80#############################################################################
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -10,28 +25,13 @@ from generalD import *
 
 plt.rcParams['hatch.linewidth'] = 0.2
 
-def names0(tech: int, kindStr: str):
-    name0 = []
-    for name in names:
-        kind = kinds[name]
-        for k in range(kind[tech]):
-            if name in ["w", "uw"]:
-                sheet0 = name + "_" + str(tech)
-            else:
-                sheet0 = name + "_" + str(i) + "_" + str(k)
-            name0.append(sheet0)
-    name1 = []
-    for name in namesW:
-        kind = kinds[name]
-        for k in range(kind[tech]):
-            if name in ["w", "uw"]:
-                sheet0 = name + "_" + str(tech)
-            else:
-                sheet0 = name + "_" + str(i) + "_" + str(k)
-            name1.append(sheet0)
-    return name0, name1
-
+# number 1
 def singleBars(tech: int, kindStr: str):
+    """ Generates the plots for the capacities individually for each
+    technology and kind, e.g. w_1, w_2, ..., z_1_1, z_1_2, ..., etc.
+    Output files are named bars_{}_{}_{}.png
+    """
+
     excelFileName = getFiles("*_effective.xlsx")
     if kindStr not in namesW:
         raise Exception("kindStr has to be w, z, or x")
@@ -54,7 +54,7 @@ def singleBars(tech: int, kindStr: str):
     if len(nameK) == 0:
         print("Empty kind")
         return
-    f, a = plt.subplots(dpi=200)
+    f, a = plt.subplots(dpi=50)
     df0 = pd.Series([0 for i in d.index])
     cmap = plt.get_cmap(CMAP0)
     dfu = pd.Series([0 for i in d.index])
@@ -82,9 +82,9 @@ def singleBars(tech: int, kindStr: str):
             else:
                 c_val = c
             colour = cmap(n(int(c_val.split("=")[1])))
-            bC = a.bar(d.index + 2016, d[c], 
-                    bottom=df0, 
-                    #label=c, 
+            bC = a.bar(d.index + 2016, d[c],
+                    bottom=df0,
+                    #label=c,
                     color=colour,
                     # alpha=0.1,
                     linewidth=0.3,
@@ -111,7 +111,7 @@ def singleBars(tech: int, kindStr: str):
             else:
                 c_val = c
             colour = cmap(n(int(c_val.split("=")[1])))
-            a.bar(d.index + 2015, d[c], 
+            a.bar(d.index + 2015, d[c],
                     bottom=dfu,
                     color=colour,
                     #edgecolor="k", lw=0.3
@@ -125,22 +125,24 @@ def singleBars(tech: int, kindStr: str):
     yl = yl if yl <= (yu-1e3) else yu-1e3
     yl -= 1e3
     print(yl, yu, kindStr, tech)
-    a.set_ylim([yl, yu])
+    #a.set_ylim([yl, yu])
     a.set_xlabel("Year")
-    a.set_ylabel("GWh")
-    a.hlines(0, min(d.index)+2015-1, max(d.index)+2015+1, color="k", linestyle="dotted")
+    a.set_ylabel("GW")
+    a.hlines(0, min(d.index)+2015-1, max(d.index)+2015+1, color="k",
+             linestyle="dotted")
     a.spines["top"].set_visible(False)
     a.spines["right"].set_visible(False)
     a.spines["bottom"].set_visible(False)
     a.set_title(realName)
     ##
     efn = excelFileName.split(".")[1].replace("/", "")
-    f.savefig("bars_{}_{}_{}.png".format(tech, kindStr, efn), 
+    f.savefig("bars_{}_{}_{}.png".format(tech, kindStr, efn),
             format="png")
     plt.close(f)
     print("saved!")
     return d
 
+# number 2
 def wAndXandZbars(tech: int):
     """ This one plots the distribution of ages for existing and new.
     It also plots retrofits, but it only uses a single colour"""
@@ -176,7 +178,7 @@ def wAndXandZbars(tech: int):
             if name == name[1]:
                 dfs[name] = pd.DataFrame(d.sum(axis=1)) # retrofit is sum
     #
-    f, a = plt.subplots(dpi=200)
+    f, a = plt.subplots(dpi=50)
 
     cmap = plt.get_cmap("tab20c")
     # create the alphaed cmap
@@ -198,9 +200,9 @@ def wAndXandZbars(tech: int):
     d = dfs[name1[0]]
     for c in d.columns:
         colour = cmap(n(int(c.split("=")[1])))
-        bC = a.bar(d.index+2015+1, d[c], 
-                bottom=df0, 
-                #label="w", 
+        bC = a.bar(d.index+2015+1, d[c],
+                bottom=df0,
+                #label="w",
                 color=colour,
                 alpha=1,
                 linewidth=0.1,
@@ -223,16 +225,16 @@ def wAndXandZbars(tech: int):
                     edgecolor="black")
             df0 += d[c]
             yu = max(yu, df0.max())
-    # x 
+    # x
     d = dfs[name1[2]] if doesItHaveZ else dfs[name1[1]]
     for c in d.columns:
         colour = my_cmap(nx(int(c.split("=")[1])))
-        bC = a.bar(d.index+2015+1, d[c], 
-                bottom=df0, 
-                #label=c, 
+        bC = a.bar(d.index+2015+1, d[c],
+                bottom=df0,
+                #label=c,
                 color=colour,
                 linewidth=0.1,
-                edgecolor="k", 
+                edgecolor="k",
                 hatch=3*"o")
         df0 += d[c]
         yu = max(yu, df0.max())
@@ -249,7 +251,7 @@ def wAndXandZbars(tech: int):
     #yu = yuw + yux + yuz
 
     yu = round(int(yu*1.01), -3) + 1e3
-    a.set_ylim(0, yu)
+    #a.set_ylim(0, yu)
 
     a.set_title(realName)
     efn = excelFileName.split(".")[1].replace("/", "")
@@ -257,6 +259,7 @@ def wAndXandZbars(tech: int):
     plt.close(f)
     print("saved!")
 
+# number 3
 def wAndZbars(tech: int):
     """This one plots only existing + retrofits with age distribution with
     colours. Though, typically retrofits are very skewed to the end."""
@@ -278,33 +281,28 @@ def wAndZbars(tech: int):
         d = d.drop(columns="Unnamed: 1")
         dfs[name] = d
 
-    f, a = plt.subplots(dpi=200)
+    f, a = plt.subplots(dpi=50)
     cmap = plt.get_cmap("tab20c")
-    # create the alphaed cmap
-    #my_cmap = cmap(np.arange(cmap.N))
-    #my_cmap[:,-1] = 0.2  #0.2 alpha
-    #my_cmap = ListedColormap(my_cmap)
 
     l = [int(c.split("=")[1]) for c in dfs[name1[0]].columns]
     n = nrm(vmin=min(l), vmax=max(l))
-    nz = n 
-    #nz = nrm(vmin=0, vmax=len(dfs[name1[1]].columns))
-    
-    yu = 1e3 
+    nz = n
+
+    yu = 1e3
     df0 = pd.Series([0 for i in d.index])
     # w
     d = dfs[name1[0]]
     for c in d.columns:
         colour = cmap(n(int(c.split("=")[1])))
-        bC = a.bar(d.index, d[c], 
-                bottom=df0, 
-                # label="w", 
+        bC = a.bar(d.index, d[c],
+                bottom=df0,
+                # label="w",
                 color=colour,
                 linewidth=0.1,
                 edgecolor="k")
         df0 += d[c]
 
-    # z 
+    # z
     d = dfs[name1[1]]
     d = d.shift(fill_value=0)
     k = 0
@@ -313,21 +311,19 @@ def wAndZbars(tech: int):
         zn = int(zstr.split("=")[1])
         print(zstr, zn)
         colour = cmap(nz(zn))
-        bC = a.bar(d.index, d[c], 
-                bottom=df0, 
+        bC = a.bar(d.index, d[c],
+                bottom=df0,
                 color=colour)
         df0 += d[c]
         k += 1
     yu = max(yu, df0.max())
     yu = round(int(yu*1.01), -3)
     #a.legend(loc=0, ncol=2)
-    a.set_ylim(top=yu)  
+    #a.set_ylim(top=yu)
     cbw = f.colorbar(smb(norm=n, cmap=cmap), ax=a, fraction=0.05)
     # cbz = f.colorbar(smb(norm=nz, cmap=cmap), ax=a, fraction=0.05)
     cbw.set_label("existing")
     cbw.set_ticks([0, 25])
-    # cbz.set_label("retrofit")
-    # cbz.set_ticks([])
     a.set_xlabel("year")
     a.set_ylabel("GWh")
     a.set_title(realName)
@@ -348,4 +344,4 @@ if __name__ == "__main__":
         wAndXandZbars(i)
     for i in range(I):
         wAndZbars(i)
-    
+

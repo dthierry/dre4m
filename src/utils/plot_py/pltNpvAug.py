@@ -1,4 +1,18 @@
 #!/usr/bin/env python
+################################################################################
+#                    Copyright 2022, UChicago LLC. Argonne                     #
+#       This Source Code form is subject to the terms of the MIT license.      #
+################################################################################
+# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
+
+# created @dthierry 2022
+# description: generate the plot with the npvs
+#
+# log:
+# 1-30-23 added some comments
+#
+#
+#80#############################################################################
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -14,6 +28,9 @@ plt.rcParams.update({
 
 
 def whichRetrofit(series) -> bool:
+    """Returns a list of booleans based on the tags.
+    E.g., if tag has RF then RF label = True, etc.
+    """
     resRfList = []
     resClList = []
     resBaList = []
@@ -36,6 +53,8 @@ def whichRetrofit(series) -> bool:
     return resRfList, resClList, resBaList
 
 def getFiles(pattern, path="."):
+    """Same function as in generalD. Finds the whole path of the required file.
+    """
     result = []
     for root, dirs, files in os.walk(path):
         for name in files:
@@ -47,6 +66,9 @@ def getFiles(pattern, path="."):
 
 
 def plot_npv_bars():
+    """Generate the NPV plots (with CO2) for the electricity
+    generation problem
+    """
     file = getFiles("coalesce.xlsx", path=".")
     eFile = pd.ExcelFile(file)
     df1 = eFile.parse(sheet_name="old_co2", index_col=0)

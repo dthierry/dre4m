@@ -1,17 +1,30 @@
+################################################################################
+#                    Copyright 2022, UChicago LLC. Argonne                     #
+#       This Source Code form is subject to the terms of the MIT license.      #
+################################################################################
+# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
+
+# created @dthierry 2022
+# description: load dataframes with the excelt results
+#
+# log:
+# 1-30-23 added some comments
+#
+#
+#80#############################################################################
+
 import sys
 import pandas as pd
 from typing import Tuple
 from generalD import *
 __author__ = "David Thierry"
 
-def loadExcelDfs(shift: bool=False):
-    excelFileName = "/Users/dthierry/Projects/plantsAnl/my_new_file.xlsx"
-    I = 10 # Ten kinds of pp
-    #names = ["w", "z", "x"]
-    ef = pd.ExcelFile(excelFileName)
 
 
 def loadExcelOveralls(shift: bool=False) -> Tuple[dict, float]:
+    """read the aggregates of the _effective.xlsx file, which is generated from
+    the results.
+    """
     excelFileName = getFiles("*_effective.xlsx")
     if not excelFileName:
         raise Exception("not found")
@@ -28,6 +41,7 @@ def loadExcelOveralls(shift: bool=False) -> Tuple[dict, float]:
             r = range(kind[i])
             for k in r:
                 suffix = "" if name in ["w", "uw"] else "_" + str(k)
+                #: sheet names for w and uw are different
                 sheetName = name + "_" + str(i) + suffix
                 print(sheetName)
                 df = ef.parse(sheet_name=sheetName, index_col=0)
@@ -50,7 +64,7 @@ def loadExcelOveralls(shift: bool=False) -> Tuple[dict, float]:
         for name in names:
             if name == "w":
                 continue
-            l[name] = l[name].shift(fill_value=0) # shift by one
+            l[name] = l[name].shift(fill_value=0) #: shift by one
     return l, dmax
 
 

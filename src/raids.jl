@@ -5,9 +5,9 @@
 # vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
 
 # created @dthierry 2022
+# description: module definition for DRE4M
 # log:
-# x-xx-xx implement changes of how age is considered
-# 1-17-23 added some comments
+# 1-30-23 renaming 
 #
 #
 #80#############################################################################
