@@ -880,8 +880,13 @@ end
 
 #80#############################################################################
 """
-  gridConWind()
-Add the wind ratio constraint for new techs to the model.
+    gridConWind()
+
+Add the x-to-wind ratio constraint for new techs to the model.
+Generally speaking we take index `baseIdx` as denominator 
+(spec[i]/baseIdx), e.g. the i-th elementh of `specRatio` to construct 
+the i-th constraint using the specified ratio viz. 
+sum_k new_allocs_spec_index_k = (sum_k base_allocs_k) * spec_ratio
 """
 function gridConWind!(
         m::JuMP.Model,
@@ -899,8 +904,8 @@ function gridConWind!(
     @constraint(m, windRatI[t=1:T-1, i in specIdx],
                 sum(xAlloc[t, i, k] for k in 0:Kx[i]-1)
                 ==
-                sum(xAlloc[t, windIdx, k] * windRatio[i]
-                    for k in 0:Kx[windIdx]-1)
+                sum(xAlloc[t, baseIdx, k] * windRatio[i]
+                    for k in 0:Kx[baseIdx]-1)
                )
     #: only applied on new allocations
 end

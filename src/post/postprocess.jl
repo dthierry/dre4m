@@ -703,7 +703,7 @@ function writeRes(m::JuMP.Model, mS::modSets, mD::modData, pr::prJrnl)
         sheet["B6"] = sum(value(co2OverallYr[t]) for t in 0:T-1)
         fname0 = Dates.format(pr.initT, "eyymmdd-HH_MM_SS")
         sheet["B7"] = fname0*pr.tag
-        sheet["B8"] = string(raids.version)
+        sheet["B8"] = string(dre4m.version)
 
         XLSX.addsheet!(xf)
         shn += 1

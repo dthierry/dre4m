@@ -7,6 +7,7 @@
 # created @dthierry 2023
 # description: prototype example of how to set up a case study with the input
 # excel file.
+# 
 #
 # log:
 #  
@@ -17,74 +18,86 @@
 import Clp
 Clp.Clp_Version() #: this one is necessary sometimes in macos
 
-using raids 
+using dre4m
 using JuMP
 
 #80#############################################################################
 function main()
     #76#########################################################################
     # initialize journalist structure
-    pr = raids.prJrnl() #: initialize journalist data structure
-    jrnl = raids.j_start #: journal action (does not change)
+    pr = dre4m.prJrnl() #: initialize journalist data structure
+    jrnl = dre4m.j_start #: journal action (does not change)
     pr.caller = @__FILE__ #: caller (does not change) 
      
     pr.tag = "_MY_TAG" #: set this to tag the results folder
     
-    raids.jrnlst!(pr, jrnl) #: pass the data
+    dre4m.jrnlst!(pr, jrnl) #: pass the data
     #76#########################################################################
-    # data file
+    # declare data file
     file = "/Users/dthierry/Projects/raids/data/instance_2v11_b.xlsx"
-
     # time horizon
     T = 2050-2020 + 1
     # technologies
     I = 11
-
-    # time Attributes
-    ta = raids.timeAttr(file)
-    # cost attributes
-    ca = raids.costAttr(file)
-    # inv(time invariant) attributes
-    ia = raids.invrAttr(file)
-
-    misc = raids.miscParam(file)
     
-    # retrofit abstract form
-    rtf = raids.absForm(file, "B22", "B28")
-    # new absract form
-    nwf = raids.absForm(file, "B23", "B29")
+    # the following attributes are necessary to set-up a problem.
+    ## (a) time Attributes
+    ta = dre4m.timeAttr(file)
+    ## (b) cost attributes
+    ca = dre4m.costAttr(file)
+    ## (c) inv(time invariant) attributes
+    ia = dre4m.invrAttr(file)
+    ## (d) miscellaneous
+    misc = dre4m.miscParam(file)
+    
+    # initialize data
+    ## retrofit abstract form requirements
+    ### (a) cell (reference sheet) position for the `kinds of retrofits`
+    rtf_kinds = "B22"
+    ### (b) cell (reference sheet) position for the `data for retrofits`
+    rtf_data = "B28" 
+    rtf = dre4m.absForm(file, rtf_kinds, rtf_data)
+    ## new absract form requirements
+    ### (a) cell (reference sheet) position for the `kinds of retrofits`
+    nwf_kinds = "B23" # (a) cell position for the `kinds new plants`
+    ### (b) cell (reference sheet) position for the `data new plants`
+    nwf_data = "B29"
+    nwf = dre4m.absForm(file, nwf_kinds, nwf_data)
 
     # setup sets
-    mS = raids.modSets(T, I, ia, rtf, nwf)
+    mS = dre4m.modSets(T, I, ia, rtf, nwf)
     # setup data
-    mD = raids.modData(ta, ca, ia, rtf, nwf, misc)
+    mD = dre4m.modData(ta, ca, ia, rtf, nwf, misc)
     # generate model
-    mod = raids.genModel(mS, mD, pr) 
+    mod = dre4m.genModel(mS, mD, pr) 
 
-    # generate objective with latency factor of 1e-01
-    raids.genObj!(mod, mS, mD, latFact=1e-01)
+    # generate objective with latency factor of 1e-01 (optional)
+    dre4m.genObj!(mod, mS, mD, latFact=1e-01)
     
     # Some additional constraints
-    raids.gridConWind!(mod, mS, 7, Dict(8=>0.25, 9=>0.25, 10=>0.03)) #: wind-
+    # e.g. 0.25 of `8` for every unit of `7`
+    #dre4m.gridConWind!(mod, mS, 7, Dict(8=>0.25, 9=>0.25, 10=>0.03)) #: wind-
     #: -ratio
-    raids.gridConUpperBound!(mod, mS) #: upper bound on bio, nuclear and hydro
-    raids.EmConBudget!(mod, mS) #: emission constraint
+    #dre4m.gridConUpperBound!(mod, mS) #: upper bound on bio, nuclear and hydro
+    
+    dre4m.EmConBudget!(mod, mS) #: emission constraint
     
     # journal action
-    jrnl = raids.j_query #: journal action (query)
-    raids.jrnlst!(pr, jrnl)
+    jrnl = dre4m.j_query #: journal action (query)
+    dre4m.jrnlst!(pr, jrnl)
     #
     
     # set linear programming solver
     set_optimizer(mod, Clp.Optimizer)
     # solve
     optimize!(mod)
-    raids.jrnlst!(pr, jrnl)
-    
+
+    # update the journalist
+    dre4m.jrnlst!(pr, jrnl)
     # write the results in the spreadsheets
-    raids.writeRes(mod, mS, mD, pr)
+    dre4m.writeRes(mod, mS, mD, pr)
     # last journal action
-    raids.jrnlst!(pr, jrnl)
+    dre4m.jrnlst!(pr, jrnl)
     #
     return mod, mS, mD, pr
 end

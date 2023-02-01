@@ -11,7 +11,7 @@
 #
 #
 #80#############################################################################
-module raids
+module dre4m 
   include("./matrix/mat_struct.jl")
   include("./gestalt/props.jl")
   include("./gestalt/modKern.jl")
@@ -19,5 +19,5 @@ module raids
   include("./mods/model.jl")
   include("./post/postprocess.jl")
   version = VersionNumber(0, 4, 6)
-  @info "RAIDS $(version) by DT@2022"
+  @info "dre4m $(version) 2022"
 end
