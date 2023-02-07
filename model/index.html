@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Model - DRE<sup>4</sup>M</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Model";
+        var mkdocs_page_input_path = "model.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <script src="../js/jquery-3.6.0.min.js" defer></script>
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+      <script>hljs.initHighlightingOnLoad();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> DRE<sup>4</sup>M
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../input/">Input</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../about/">About</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="./">Model</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#objective-function">Objective function</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#core-asset-balance-constraints">Core: asset balance constraints</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#existing">Existing</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#existing-retrofitted">Existing-retrofitted</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#new-asset">New-asset</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#supporting-constraints">Supporting constraints</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#concluding-remarks">Concluding remarks</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../license/">License</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">DRE<sup>4</sup>M</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" alt="Docs"></a> &raquo;</li>
+      <li>Model</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="model">Model</h1>
+<p>This section provides a shortcut description of the model behind <code>dre4m</code>. For
+the purpose of laying out the core concepts, notation has been simplified from
+the original paper.
+The problem behind the diversification of the technology of a sector can be
+summarized by the following linear program,</p>
+<div class="arithmatex">\[
+\begin{equation}
+    \begin{split}
+        \min\; O\left(\mathbf{x}, \mathbf{p}\right):= 
+        \alpha \, \mathtt{NPV} \left(\mathbf{x}, \mathbf{p}\right)
+        + \beta \, \mathtt{termCost} \left(\mathbf{x}, \mathbf{p}\right)
+        + \gamma \, \mathtt{softSl}\left(\mathbf{x}, \mathbf{p}\right)
+        + , \; \text{s.t.} \; \mathbf{x} \in
+        \mathcal{X}(\mathbf{p}).
+    \end{split}
+\end{equation}
+\]</div>
+<p>In which, <span class="arithmatex">\(\mathbf{x}\)</span> represents the concatenated vector of variables of the
+problem, and <span class="arithmatex">\(\mathbf{p}\)</span> represents the exogenous parameters of the model, 
+e.g., capital costs, demand, etc. <span class="arithmatex">\(\mathcal{X}\)</span> represents the feasible
+set of constraints of the model, e.g. asset balance, and so forth. Finally, the
+scalars <span class="arithmatex">\(\alpha, \beta, \gamma \in \mathbb{R}_{+}\)</span>, are arbitrary scaling
+factors.</p>
+<h2 id="objective-function">Objective function</h2>
+<p>The objective function has three main components, viz.,</p>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\mathtt{NPV} \left(\mathbf{x}, \mathbf{p}\right)\)</span></td>
+<td>Net present value</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\mathtt{termCost} \left(\mathbf{x}, \mathbf{p}\right)\)</span></td>
+<td>Terminal cost</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\mathtt{softSl}\left(\mathbf{x}, \mathbf{p}\right)\)</span></td>
+<td>Soft service-life cost.</td>
+</tr>
+</tbody>
+</table>
+<p>Net present value, is composed of the overnight capital, O&amp;M, fuel, and
+retirement costs, adjusted over time. Terminal cost compensates for the myopic
+results, as a consequence the fixed horizon model. Finally, soft service-life is
+methodology in which assets penalized for taking part in the system past their
+typical service-life.</p>
+<p>Next is a short description of the core component of the model, but it is noted
+that this section will not reference to all of the equations and variables found
+in the model. Refer to the manuscript for more details.</p>
+<h2 id="core-asset-balance-constraints">Core: asset balance constraints</h2>
+<p>The main component of <code>dre4m</code> is the set of variables and constraints that
+represent the changes to the technology asset makeup over time. 
+Any case study for <code>dre4m</code> requires a set of <em>initial</em> assets. Then, for the
+specified time horizon, the model within <code>dre4m</code> would find the appropriate set
+of retirements, and retrofitting decisions for the existing assets. Moreover,
+it can also decide to deploy new capacity from a technology portfolio. </p>
+<p>Having establishing the most relevant decisions of the model, the balance terms
+are contingent upon the following sets, representing time, technology, and
+initial age, viz.,</p>
+<table>
+<thead>
+<tr>
+<th>Sets</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(T\)</span></td>
+<td>Time set (<span class="arithmatex">\(\left\lbrace 0, 1, \dots, \mathtt{horizon}\right\rbrace\)</span>)</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(I\)</span></td>
+<td>Technology set (<span class="arithmatex">\(\left\lbrace \text{tech 0}, \text{tech 1}, \dots\right\rbrace\)</span>)</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(N_j\)</span></td>
+<td>Initial age of existing asset set (<span class="arithmatex">\(N_j \subseteq \mathbb{Z}_{\geq 0}\)</span>)</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(K_i\)</span></td>
+<td>Sub-technology for existing assets</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\tilde{K}_i\)</span></td>
+<td>Sub-technology for new assets.</td>
+</tr>
+</tbody>
+</table>
+<p>The following variables (<span class="arithmatex">\(\in\mathbb{R}_{\geq 0}\)</span>) are thus, recognized,</p>
+<table>
+<thead>
+<tr>
+<th>variable</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(w^t_{i,j}\)</span></td>
+<td>existing assets, <span class="arithmatex">\(t \in T, i \in I, j \in N_i\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(y^t_{i,k,j}\)</span></td>
+<td>retrofitted assets transition, <span class="arithmatex">\(t \in T, i \in I, k \in K_i, j \in N_i\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(u^{t}_{i,j}\)</span></td>
+<td>retired assets <span class="arithmatex">\(t \in T, i \in I, j \in N_i\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(z^t_{i,k,j}\)</span></td>
+<td>retrofitted assets, <span class="arithmatex">\(t \in T, i \in I, k \in K_i, j \in N_i\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\overline{u}^t_{i,k,j}\)</span></td>
+<td>retired retrofitted assets, <span class="arithmatex">\(t \in T, i \in I, k \in K_i, j \in N_i\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(x^{t}_{i,k,j}\)</span></td>
+<td>new assets, <span class="arithmatex">\(t,j \in T, i \in I, k \in \tilde{K}_i\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(v^t_{i,k,j}\)</span></td>
+<td>retired new assets, <span class="arithmatex">\(t,j \in T, i \in I, k \in \tilde{K}_i\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\tilde{x}^t_{i,k}\)</span></td>
+<td>new allocated, <span class="arithmatex">\(t,j \in T, i \in I, k \in \tilde{K}_i\)</span>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="existing">Existing</h3>
+<p>From a point in time to the next, existing assets can either be retired, undergo
+a number of retrofits, and remain the same. This corresponds to the decision
+tree, from the following figure.</p>
+<p class="aligncenter"> <img src="../img/wuy.svg" width="40%" height="40%"
+title="balance for existing assets"> </p>
+
+<style>
+.aligncenter {
+    text-align: center;
+}
+</style>
+
+<p>This can be interpreted as an algebraic expression as follows, </p>
+<div class="arithmatex">\[
+  w^{t+1}_{i,j} = w^{t}_{i,j} - u^{t}_{i,j} - \sum_{k \in K_i} y^{t}_{i, k,j}, 
+  \; \forall t \in T, i \in I, j \in N_i.
+\]</div>
+<h3 id="existing-retrofitted">Existing-retrofitted</h3>
+<p>If an asset is subject to retrofitting, i.e. at time <span class="arithmatex">\(t\)</span>, for asset of kind <span class="arithmatex">\(i\)</span>,
+and base age <span class="arithmatex">\(j\)</span>, <span class="arithmatex">\(y^t_{i,k,j} &gt; 0\)</span> for some <span class="arithmatex">\(k\in K_i\)</span>, said asset
+enters a separate balance for retrofitted-assets. From that point, the
+retrofitted-asset can either be retired or remain unchanged at the next point.
+This is shown in the following picture.</p>
+<p><img src="../img/zyu.svg" width="40%" height="40%" title="balance for new 
+assets"></p>
+<p>Which results in the following algebraic expression,</p>
+<div class="arithmatex">\[
+    z^{t+1}_{i,k,j} = z^{t}_{i,k,j} - \overline{u}^t_{i,k,j} + y^t_{i,k,j},\;
+    \forall 
+  t \in T, i \in I, k \in K_i, j \in N_i.
+\]</div>
+<h3 id="new-asset">New-asset</h3>
+<p>New assets are allocated strategically, i.e. at time <span class="arithmatex">\(t\)</span>, for kind <span class="arithmatex">\(i\)</span>, there is
+<span class="arithmatex">\(\tilde{x}^t_{i,k}&gt;0\)</span> for some <span class="arithmatex">\(k \in \tilde{K}_i\)</span>. Then, these enter their own
+tally following the next equation,</p>
+<div class="arithmatex">\[
+    x^t_{i,k,t} = \tilde{x}^t_{i,k}, \; 
+    \forall t\in T, i\in I, k\in \tilde{K}_i.
+\]</div>
+<p>Moreover, the new assets can either be retired, or continue to the next point,
+this is laid out in the following figure and equation.</p>
+<p><img src="../img/xv.svg" width="40%" height="40%" title="balance for retrofits"></p>
+<div class="arithmatex">\[
+    x^{t+1}_{i,k,j} = x^{t}_{i,k,j} - v^t_{i,k,j}
+    ,\; \forall
+    t,j \in T, i \in I, k \in \tilde{K}_i.
+\]</div>
+<h3 id="supporting-constraints">Supporting constraints</h3>
+<p>Following the supposition of an initial amount of existing assets of different
+kinds, the variables are linked by the following equation,</p>
+<div class="arithmatex">\[
+    w^0_{i,j} = \mathtt{initCap}_{i,j}, \; \forall i\in I, j\in N_i.
+\]</div>
+<p>Also, it is assumed that no retrofitted-assets exists at the initial time.</p>
+<div class="arithmatex">\[
+    z^0_{i,k,j} = 0, \; \forall i\in I, k \in K_i, j\in N_i.
+\]</div>
+<h2 id="concluding-remarks">Concluding remarks</h2>
+<p>It is encouraged to refer to the <code>dre4m</code> manuscript where the complete model is
+laid out. This page is a brief summary of some core aspects of the model.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../about/" class="btn btn-neutral float-left" title="About"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../license/" class="btn btn-neutral float-right" title="License">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+      <p>Argonne National Laboratory - 2023, written by D. Thierry.</p>
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../about/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../license/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme_extra.js" defer></script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../javascripts/mathjax.js" defer></script>
+      <script src="https://polyfill.io/v3/polyfill.min.js?features=es6" defer></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>

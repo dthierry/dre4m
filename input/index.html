@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Input - DRE<sup>4</sup>M</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Input";
+        var mkdocs_page_input_path = "input.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <script src="../js/jquery-3.6.0.min.js" defer></script>
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+      <script>hljs.initHighlightingOnLoad();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> DRE<sup>4</sup>M
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="./">Input</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#reference-sheet">Reference sheet</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#time-variant-attributes-timeattr">Time-variant attributes: timeAttr</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#notes-on-ordering">Notes on ordering</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#cost-attributes-costattr">Cost attributes: costAttr</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#time-invariant-attributes-invrattr">Time-invariant attributes invrAttr</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#abstract-forms">Abstract forms</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../about/">About</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../model/">Model</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../license/">License</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">DRE<sup>4</sup>M</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" alt="Docs"></a> &raquo;</li>
+      <li>Input</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="input-data">Input data</h1>
+<p><code>dre4m</code> uses an excel file as input, Refer to the <code>./data/prototype.xlsx</code> file
+for a blank protoype of the input. </p>
+<p>There are a number of sheets in the prototype file. Their description is given
+in the following table</p>
+<table>
+<thead>
+<tr>
+<th>sheet</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>reference</td>
+<td>"pointers" to the data</td>
+</tr>
+<tr>
+<td><code>timeAttr</code></td>
+<td>quantities functions of time (<em>not</em> associated with cost)</td>
+</tr>
+<tr>
+<td><code>costAttr</code></td>
+<td>quantities <em>exclusively</em> related to the system cost</td>
+</tr>
+<tr>
+<td><code>invrAttr</code></td>
+<td>quantities not functions of time (<em>not</em> associated with cost)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="reference-sheet">Reference sheet</h2>
+<p>The <em>reference</em> sheet contains the cell location of the main components of the
+data-structures in <code>dre4m</code>. 
+Data inputs typically are given in matrix, vector, or scalar form. Matrices and
+vectors require 2 addresses; matrices use upper-left and bottom-right corners
+coordinates, whereas vectors use the first and last element coordinates. </p>
+<p>For instance, at the <code>timeAttr</code> section, the "initial capacity" matrix requires
+2 addresses, </p>
+<table>
+<thead>
+<tr>
+<th align="left"><code>timeAttr</code></th>
+<th>location</th>
+<th>factor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">initial</td>
+<td><code>X</code>:<code>Y</code></td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<p>The addresses are given in the cell next to the "initial" cell, and these
+represent the upper-left (<code>X</code>, e.g. B3) and bottom-right locations (<code>Y</code>, e.g.
+DW13), 
+separated by a colon <code>:</code>.</p>
+<p>The <em>factor</em> column is required for floating point quantities, e.g. costs, heat
+rates, etc. </p>
+<blockquote>
+<p>&#x2757;
+It is the responsability of the user to ensure that there is consistency
+among all the units used within the computations.</p>
+</blockquote>
+<p>E.g., suppose power is given in <mark>GWh</mark>, then heat rates must have a
+consistent unit, for instance, MMBTU/<mark>GWh</mark>. </p>
+<h2 id="time-variant-attributes-timeattr">Time-variant attributes: <code>timeAttr</code></h2>
+<p>The <code>timeAttr</code> sheet contains data that is a function of time but are not
+related to cost (e.g. in USD). For instance,</p>
+<ul>
+<li>Initial capacity by vintage</li>
+<li>Demand by year</li>
+<li>Average capacity factor by vintage</li>
+<li>Existing capacity heat rate by vintage</li>
+<li>New plant heat rate by year.</li>
+</ul>
+<h3 id="notes-on-ordering">Notes on ordering</h3>
+<p>Quantities of <em>existing</em> assets must be given by <em>descending order of vintage</em>.
+E.g., the initial capacities must be given as shown in the following table. </p>
+<table>
+<thead>
+<tr>
+<th>technology</th>
+<th>year[T]</th>
+<th>year[T-1]</th>
+<th>year[T-2]</th>
+<th>year[T-3]</th>
+<th>...</th>
+<th>year[0]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tech 1</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+</tr>
+<tr>
+<td>tech 2</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+</tr>
+<tr>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+</tr>
+<tr>
+<td>tech I-1</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+</tr>
+<tr>
+<td>tech I</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+</tr>
+</tbody>
+</table>
+<p>Quantities for <em>new</em> assets, are given by <em>increasing</em> order, e.g. 2022, 2023,
+etc. </p>
+<blockquote>
+<p>&#x2757;
+Throughout the framework, the rule is, quantities must be given in 
+<em>increasing</em> order of year, except <em>existing</em>, i.e. old plants, for which they
+are given in <em>reverse</em> order.</p>
+</blockquote>
+<h2 id="cost-attributes-costattr">Cost attributes: <code>costAttr</code></h2>
+<p>This sheet contains all attributes related to cost, viz.</p>
+<ul>
+<li>Capital cost</li>
+<li>Fixed O&amp;M cost</li>
+<li>Variable O&amp;M cost</li>
+<li>Cost of electrical power</li>
+<li>Cost of fuel</li>
+<li>Decomissioning cost.</li>
+</ul>
+<p>These values must be laid-out by both technology and year.</p>
+<h2 id="time-invariant-attributes-invrattr">Time-invariant attributes <code>invrAttr</code></h2>
+<p>These attributes that do not change over time, and information about the
+abstract retrofit and new asset forms. For example, the information in this
+sheet has financial and technical details, e.g.,</p>
+<ul>
+<li>Horizon</li>
+<li>Loan term</li>
+<li>Interest rate annuity factor</li>
+<li>New plant heat rate by year.</li>
+<li>Carbon intensity</li>
+<li>Fuel based tech</li>
+<li>Carbon based tech</li>
+<li>Retrofitted plant kinds</li>
+<li>New plant kinds.</li>
+</ul>
+<p>Perhaps the most important information in this sheet is parameters of the
+<em>abstract</em> forms of retrofits and new plants.</p>
+<h3 id="abstract-forms">Abstract forms</h3>
+<p>These parameters act as modifiers of the base technology. For example, a base
+coal-fired power plant can have a carbon capture retrofit, thus inheriting some
+of the base properties, while simultaneously modifying others in a substantial
+way. To achieve this, a multiplier must be defined. Then the model takes the
+base value, e.g.  heat rate, and multiplies it by the specified modifier.
+Another way in which a base technology can be changed is by letting it switch to
+a different fuel, thus affecting aspects like emission output, fuel cost, and
+heat rate. Therefore, there modifiers of the base technology are defined as the
+tuple of multiplier and base fuel.</p>
+<p>So far, the current version of the model considers the following modifier pairs,</p>
+<ul>
+<li>Capital cost</li>
+<li>O&amp;M costs (Fixed and Variable)</li>
+<li>Heat rate</li>
+<li>Carbon dioxide</li>
+<li>Fuel consumption</li>
+<li>Use base heat rate</li>
+<li>Miscellaneous.</li>
+</ul>
+<p>And, these are given in the excel table as follows,</p>
+<table>
+<thead>
+<tr>
+<th>technology</th>
+<th>Description</th>
+<th>Prop. mod multiplier</th>
+<th>Prop. mod. base fuel</th>
+<th>...</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>i=0</code>, kind<code>=0</code></td>
+<td>(description)</td>
+<td>value (<em>&gt;0</em>)</td>
+<td>fuel index (e.g. 1, 2,...)</td>
+<td>.</td>
+</tr>
+<tr>
+<td><code>i=0</code>, kind<code>=1</code></td>
+<td>(description)</td>
+<td>value (<em>&gt;0</em>)</td>
+<td>fuel index (e.g. 1, 2,...)</td>
+<td>.</td>
+</tr>
+<tr>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+<td>.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>&#x2757;
+Any missing value or <code>-9999</code> would be interpreted as <strong>non-modifying</strong>, in
+other words, no changes will be made to the base technology.</p>
+</blockquote>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href=".." class="btn btn-neutral float-left" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../about/" class="btn btn-neutral float-right" title="About">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+      <p>Argonne National Laboratory - 2023, written by D. Thierry.</p>
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href=".." style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../about/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme_extra.js" defer></script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../javascripts/mathjax.js" defer></script>
+      <script src="https://polyfill.io/v3/polyfill.min.js?features=es6" defer></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
