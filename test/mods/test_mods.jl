@@ -1,57 +1,59 @@
-# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80
-#############################################################################
-#  Copyright 2022, David Thierry, and contributors
-#  This Source Code Form is subject to the terms of the MIT
-#  License.
-#############################################################################
-using mid_s
+################################################################################
+#                    Copyright 2022, UChicago LLC. Argonne                     #
+#       This Source Code form is subject to the terms of the MIT license.      #
+################################################################################
+# vim: expandtab colorcolumn=80 tw=80
+
+# created @dthierry 2022
+# description: module definition for DRE4M
+# log:
+# 2-07-23 renaming 
+#
+#
+#80#############################################################################
+
 using Test
+using dre4m 
 
 @testset "model testing" begin
-  pr = mid_s.prJnl()
-  jrnl = mid_s.j_start
-  pr.caller = @__FILE__
-  mid_s.jrnlst!(pr, jrnl)
-  
-  file = "/Users/dthierry/Projects/mid-s/data/cap_mw.xlsx"
-  # set form
-  T = 5
-  I = 10
-  sl = [i for i in 1:I]
-  si = 0.01
-  gf = mid_s.gridForm(I)
-  for i in 0:I-1 
-    gf.kinds_z[i+1] = i+1
-    gf.kinds_x[i+1] = i+1
-  end
-  # set sets
-  mS = mid_s.modSets(T, I, gf, sl, si)
-  # set retrofit form
-  ta = mid_s.timeAttr(file)
-  ca = mid_s.costAttr(file)
-  ia = mid_s.invrAttr(file)
-  ###$$$$  ###$$$$  ###$$$$  ###$$$$
-  function rf0(base, kind, time)
-    m = 1
-    b = kind
-    return (m, b)
-  end
-  fv = (b,k,t)->(3, b)
-  ff = (b,k,t)->(2, 4)
-  fh = (b,k,t)->(1, b)
-  fe = (b,k,t)->(2, 2)
-  ffu = (b,k,t)->(1, 3)
-  ###$$$$  ###$$$$  ###$$$$  ###$$$$
-  rf = mid_s.retrofForm(rf0, 
-                        fv, 
-                        ff, 
-                        fh, 
-                        fe, 
-                        ffu)
-  # set data
-  mD = mid_s.modData(gf, ta, ca, ia, rf)
-  @test true
-  mod = mid_s.genModel(mS, mD, pr)
-  @test true
+    pr = dre4m.prJrnl()
+    jrnl = dre4m.j_start
+    pr.caller = @__FILE__
+    dre4m.jrnlst!(pr, jrnl)
+    file = "../data/prototype/prototype_0.xlsx"
+    # set form
+    # time horizon
+    T = 2050-2020 + 1
+    # technologies
+    I = 11
+    
+
+    ta = dre4m.timeAttr(file)
+    ## (b) cost attributes
+    ca = dre4m.costAttr(file)
+    ## (c) inv(time invariant) attributes
+    ia = dre4m.invrAttr(file)
+    ## (d) miscellaneous
+    misc = dre4m.miscParam(file)
+
+
+    rtf_kinds = "B22"
+    ### (b) cell (reference sheet) position for the `data for retrofits`
+    rtf_data = "B28" 
+    rtf = dre4m.absForm(file, rtf_kinds, rtf_data)
+    ## new absract form requirements
+    ### (a) cell (reference sheet) position for the `kinds of retrofits`
+    nwf_kinds = "B23" # (a) cell position for the `kinds new plants`
+    ### (b) cell (reference sheet) position for the `data new plants`
+    nwf_data = "B29"
+    nwf = dre4m.absForm(file, nwf_kinds, nwf_data)
+
+    mS = dre4m.modSets(T, I, ia, rtf, nwf)
+    # setup data
+    mD = dre4m.modData(ta, ca, ia, rtf, nwf, misc)
+    
+    @test true
+    mod = dre4m.genModel(mS, mD, pr)
+    @test true
 end
 

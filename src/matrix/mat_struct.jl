@@ -105,7 +105,7 @@ Initialize the time invariant attributes of the model.
 inputFile must be the name of the input excel file.
 """
 mutable struct invrAttr
-    servLife::Vector{Int64} #: yr
+    servLife::Vector{Int64} #: yr, we put this in vector form for which reason?
     carbInt::Array{Float64} #: kgCO2/MMBTU
     
     kinds_z::Array{Int64}
@@ -167,8 +167,18 @@ end
     absForm(inputFile::String)
 Abstract asset modifier.
 inputFile: must be the name of the input excel file.
-kRef: reference cell for the kinds
-m9Ref: reference cell for the 9999 matrix
+kRef: reference cell for the kinds at the `reference` sheet
+m9Ref: reference cell for the 9999 matrix at the `reference` sheet
+
+The `absForm` effectively amounts to set of dictionaries, for which the keyes
+are the base tech and the "kind", e.g. base tech = 0, kinds in {0, 1, 2, 3,
+...}.
+
+Then we have elements like `mCc` and "bCc", which correspond to the multiplier
+and the *fuel switch*. Acess should be a typical, `absForm.mCc[(i, k)]`, and so
+on and so forth.
+
+todo: get rid of the `-9999` thing, it is just ugly.
 """
 struct absForm
     delay

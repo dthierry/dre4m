@@ -1,70 +1,39 @@
-# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80
-#############################################################################
-#  Copyright 2022, David Thierry, and contributors
-#  This Source Code Form is subject to the terms of the MIT
-#  License.
-#############################################################################
-using mid_s
+################################################################################
+#                    Copyright 2022, UChicago LLC. Argonne                     #
+#       This Source Code form is subject to the terms of the MIT license.      #
+################################################################################
+# vim: expandtab colorcolumn=80 tw=80
+
+# created @dthierry 2022
+# log:
+# 2-7-23 added some comments
+
 using Test
+using dre4m
 
+#: test something dumb so we can see that it works
 @testset "modSets" begin
-  T = 5
-  I = 10
-  sl = [i for i in 1:I]
-  si = 0.01
-  gf = mid_s.gridForm(I)
-  for i in 0:I-1 
-    gf.kinds_z[i+1] = i+1
-    gf.kinds_x[i+1] = i+1
-  end
-  ms = mid_s.modSets(T, I, gf, sl, si)
-  lz = 0
-  lx = 0
-  for i in 0:I-1 for k in 0:ms.Kz[i]-1 lz+=1 end end
-  for i in 0:I-1 for k in 0:ms.Kx[i]-1 lx+=1 end end
-  @test typeof(ms.I) == Int64
-  @test typeof(ms.T) == Int64
-  @test length(ms.Nz) == lz
-  @test length(ms.Nx) == lx
+    T = 5
+    I = 10
+    file = "../data/prototype/prototype_0.xlsx"
+
+    ia = dre4m.invrAttr(file)
+
+    rtf = dre4m.absForm(file, "B22", "B28")
+    nwf = dre4m.absForm(file, "B23", "B29")
+
+    ms = dre4m.modSets(T, I, ia, rtf, nwf)
+
+    lz = 0
+    lx = 0
+    for i in 0:I-1 for k in 0:ms.Kz[i]-1 lz+=1 end end
+    for i in 0:I-1 for k in 0:ms.Kx[i]-1 lx+=1 end end
+
+    @test typeof(ms.I) == Int64
+    @test typeof(ms.T) == Int64
+    @test length(ms.Nz) == lz
+    @test length(ms.Nx) == lx
 end
 
-@testset "testing_modData" begin
-  file = "/Users/dthierry/Projects/mid-s/data/cap_mw.xlsx"
-  T = 5
-  I = 10
-  sl = [i for i in 1:I]
-  si = 0.01
-  gf = mid_s.gridForm(I)
-  for i in 0:I-1 
-    gf.kinds_z[i+1] = i+1
-    gf.kinds_x[i+1] = i+1
-  end
-  ###$$$$  ###$$$$  ###$$$$  ###$$$$
-  ta = mid_s.timeAttr(file)
-  ca = mid_s.costAttr(file)
-  ia = mid_s.invrAttr(file)
-  ###$$$$  ###$$$$  ###$$$$  ###$$$$
-  function rf0(f, base, kind, time)
-    m = 1
-    b = kind
-    return (m, b)
-  end
-  fv = (b,k,t)->(3, b)
-  ff = (b,k,t)->(2, 4)
-  fh = (b,k,t)->(1, b)
-  fe = (b,k,t)->(2, 2)
-  ffu = (b,k,t)->(1, 3)
-  ###$$$$  ###$$$$  ###$$$$  ###$$$$
-  rf = mid_s.retrofForm(rf0, 
-                        fv, 
-                        ff, 
-                        fh, 
-                        fe, 
-                        ffu)
-
-  ###$$$$  ###$$$$  ###$$$$  ###$$$$
-  m = mid_s.modData(gf, ta, ca, ia, rf)
-  @test true
-end
 
 

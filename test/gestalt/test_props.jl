@@ -1,18 +1,26 @@
-# vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80
-#############################################################################
-#  Copyright 2022, David Thierry, and contributors
-#  This Source Code Form is subject to the terms of the MIT
-#  License.
-#############################################################################
+################################################################################
+#                    Copyright 2022, UChicago LLC. Argonne                     #
+#       This Source Code form is subject to the terms of the MIT license.      #
+################################################################################
+# vim: expandtab colorcolumn=80 tw=80
+
+# created @dthierry 2022
+# log:
+# 2-7-23 added some comments
+
+
+
 using Test
-using mid_s
+using dre4m
 
 
 @testset "test journalist" begin
-  p = mid_s.prjp()
-  j = mid_s.j_start
-  mid_s.jrnlst!(p, j)
-  j = mid_s.j_step
-  mid_s.jrnlst!(p, j)
-  @test true
+    p = dre4m.prJrnl()
+    j = dre4m.j_start
+    p.caller = @__FILE__ #: caller (does not change) 
+    p.tag = "_MY_TAG" #: set this to tag the results folder
+    dre4m.jrnlst!(p, j)
+    j = dre4m.j_query
+    dre4m.jrnlst!(p, j)
+    @test true
 end

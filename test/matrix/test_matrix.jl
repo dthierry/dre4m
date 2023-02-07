@@ -1,31 +1,37 @@
-using mid_s 
+################################################################################
+#                    Copyright 2022, UChicago LLC. Argonne                     #
+#       This Source Code form is subject to the terms of the MIT license.      #
+################################################################################
+# vim: expandtab colorcolumn=80 tw=80
+
+# created @dthierry 2022
+# log:
+# 2-7-23 added some comments
+#
 using Test
+using dre4m 
+
+file = "../data/prototype/prototype_0.xlsx"
 
 @testset "build_timeAttr" begin
-  file = "/Users/dthierry/Projects/mid-s/data/cap_mw.xlsx"
-  c = mid_s.timeAttr(file)
-  @test typeof(c) == mid_s.timeAttr
-  @test size(c.initCap) == (11, 71)
+  c = dre4m.timeAttr(file)
+  @test size(c.initCap) == (11, 126)
   @test size(c.nachF) == (1, 96)
-  @test size(c.cFac) == (11, 96)
+  @test size(c.cFac) == (11, 78)
 end
 
 
 @testset "build_costAttr" begin
-  file = "/Users/dthierry/Projects/mid-s/data/cap_mw.xlsx"
-  c = mid_s.costAttr(file)
-  @test typeof(c) == mid_s.costAttr
-  @test size(c.capC) == (11, 96)
-  @test size(c.varC) == (11, 96)
-  @test size(c.fixC) == (11, 96)
+  c = dre4m.costAttr(file)
+  @test size(c.capC) == (11, 31)
+  @test size(c.varC) == (11, 31)
+  @test size(c.fixC) == (11, 31)
 end
 
 @testset "build_invrAttr" begin
-  file = "/Users/dthierry/Projects/mid-s/data/cap_mw.xlsx"
-  c = mid_s.invrAttr(file)
-  @test typeof(c) == mid_s.invrAttr
-  @test size(c.servLife) == (11, 1)
-  @test size(c.carbInt) == (11, 1)
+  c = dre4m.invrAttr(file)
+  @test size(c.servLife) == (11,)
+  @test size(c.carbInt) == (11,1)
   @test size(c.discountR) == ()
   @test size(c.heatIncR) == ()
 end

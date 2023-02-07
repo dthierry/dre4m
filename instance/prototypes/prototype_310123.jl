@@ -34,7 +34,7 @@ function main()
     dre4m.jrnlst!(pr, jrnl) #: pass the data
     #76#########################################################################
     # declare data file
-    file = "/Users/dthierry/Projects/raids/data/instance_2v11_b.xlsx"
+    file = "../../data/prototype/prototype_0.xlsx"
     # time horizon
     T = 2050-2020 + 1
     # technologies
