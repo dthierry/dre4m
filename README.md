@@ -28,15 +28,17 @@ requirement, etc.
 
 ## Documentation
 
+[Documentation](https://dthierry.github.io/dre4m/).
+
 ## Source Code Organization
 
-|  Directory | Description   |
-|------------|---------------|
-| test/      | testing files |
-| instance/  | case studies  |
-| data/      | instance data |
-| src/       | source code   |
-| docs/      | documentation |
+|  Directory | Description       |
+|------------|-------------------|
+| test/      | testing files     |
+| instance/  | case studies      |
+| data/      | instance data     |
+| src/       | source code       |
+| docs/      | documentation src |
 
 
 ## Contributors
