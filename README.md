@@ -2,6 +2,11 @@
 # DRE<sup>4</sup>M
 ### Decarbonization Roadmapping and Energy, Environmental, Economic, and Equity Analysis Model
 
+
+
+<p class="aligncenter"> <img src="./docs/docs/img/dre4m.svg" width="40%" height="40%"
+title="dre4am fr"> </p>
+
 This is the implementation of the framework for the planning of the
 technological makeup of the industrial sector.
 
