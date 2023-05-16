@@ -9,6 +9,10 @@ makeup of a generic sector. The current incarnation framework coalesces into a
 interface between model and solver. `dre4m` is subject to the terms of the [MIT
 license](https://mit-license.org).
 
+
+<p class="aligncenter"> <img src="../img/dre43.png" width="20%" height="20%"
+title="dre4m logo"> </p>
+
 ## Installation
 
 At the Julia REPL press `]` mode, then `dre4m` can be obtained directly from the
