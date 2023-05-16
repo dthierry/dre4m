@@ -10,7 +10,7 @@ interface between model and solver. `dre4m` is subject to the terms of the [MIT
 license](https://mit-license.org).
 
 
-<p class="aligncenter"> <img src="../img/dre43.png" width="20%" height="20%"
+<p class="aligncenter"> <img src="../img/dre4mnoback.svg" width="20%" height="20%"
 title="dre4m logo"> </p>
 
 ## Installation
