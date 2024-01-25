@@ -1,9 +1,4 @@
 #vim: tabstop=2 shiftwidth=2 expandtab colorcolumn=80 tw=80
-#############################################################################
-#  Copyright 2022, David Thierry, and contributors
-#  This Source Code Form is subject to the terms of the MIT
-#  License.
-#############################################################################
 
 
 using XLSX
