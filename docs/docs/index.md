@@ -74,7 +74,7 @@ Before running a problem, please consult the data requirements from the
 
 ## License
  
-`dre4m` is licensed under the MIT software [license](license.md). 
+`dre4m` is licensed under the 3-Clause BSD [license](license.md). 
 
 Additionally, `dre4m` utilizes several dependencies, which have their own
 licences. Refer to their respective repositories for more information about the
