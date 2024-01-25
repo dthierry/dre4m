@@ -6,8 +6,8 @@ DRE<sup>4</sup>M or `dre4m` is a framework for the planing of the technological
 makeup of a generic sector. The current incarnation framework coalesces into a
 *linear program* (LP). The program was laid out using
 [`JuMP`](https://github.com/jump-dev/JuMP.jl), which also serves as the
-interface between model and solver. `dre4m` is subject to the terms of the [MIT
-license](https://mit-license.org).
+interface between model and solver. `dre4m` is subject to the terms of the
+[3-Clause BSD License](https://opensource.org/license/BSD-3-clause/).
 
 
 <p class="aligncenter"> <img src="../img/dre4mnoback.svg" width="20%" height="20%"
