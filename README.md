@@ -52,7 +52,7 @@ requirement, etc.
 
 ## License
  
-DRE<sup>4</sup>M (`dre4m`) is licensed under the MIT software licence.
+DRE<sup>4</sup>M (`dre4m`) is licensed under 3-Clause BDS licence.
 Additionally, DRE<sup>4</sup>M (`dre4m`) utilizes several dependencies, which
 have their own licences.  Consult their respective repositories for more
 information about the licenses. 
